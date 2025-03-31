@@ -31,8 +31,8 @@ interface AuthProviderProps {
 
 // For demo purposes - in a real app this would be fetched from an API
 const DEMO_ADMIN = {
-  email: "admin@timetale.com",
-  password: "admin123",
+  email: "youremail@example.com",
+  password: "yourpassword",
   id: "1",
   name: "Admin User",
   role: "admin",
