@@ -1,17 +1,23 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useData, DAYS, PERIODS_PER_DAY } from "@/contexts/DataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const TimetableView: React.FC = () => {
-  const { sections, teachers, subjects, timetable, generateTimetable, resetTimetable } = useData();
+  const { sections, teachers, subjects, timetable, generateTimetable, resetTimetable, loading } = useData();
   const [selectedSection, setSelectedSection] = useState<string | undefined>(
     sections.length > 0 ? sections[0].id : undefined
   );
   const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    if (sections.length > 0 && !selectedSection) {
+      setSelectedSection(sections[0].id);
+    }
+  }, [sections, selectedSection]);
 
   const getTeacherName = (teacherId: string) => {
     const teacher = teachers.find((t) => t.id === teacherId);
@@ -23,10 +29,10 @@ const TimetableView: React.FC = () => {
     return subject ? subject.name : "Unknown";
   };
 
-  const handleGenerateTimetable = () => {
+  const handleGenerateTimetable = async () => {
     setIsGenerating(true);
     try {
-      generateTimetable();
+      await generateTimetable();
     } finally {
       setIsGenerating(false);
     }
@@ -36,6 +42,22 @@ const TimetableView: React.FC = () => {
     // In a real application, you would implement PDF export functionality here
     alert("PDF export functionality would be implemented here in a real application.");
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <Skeleton className="h-8 w-48" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+        <Skeleton className="h-[600px] w-full" />
+      </div>
+    );
+  }
 
   const hasData = teachers.length > 0 && subjects.length > 0 && sections.length > 0;
   const hasSelectedSection = selectedSection && timetable[selectedSection];
@@ -48,7 +70,6 @@ const TimetableView: React.FC = () => {
     "bg-timetable-green"
   ];
 
-  // Get a color for each subject
   const subjectColors: Record<string, string> = {};
   subjects.forEach((subject, index) => {
     subjectColors[subject.id] = colors[index % colors.length];

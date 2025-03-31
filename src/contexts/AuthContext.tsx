@@ -29,14 +29,8 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// For demo purposes - in a real app this would be fetched from an API
-const DEMO_ADMIN = {
-  email: "youremail@example.com",
-  password: "yourpassword",
-  id: "1",
-  name: "Admin User",
-  role: "admin",
-};
+// API base URL - update this to your PHP API endpoint
+const API_URL = "http://localhost/timetable/api";
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -56,27 +50,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // For demo purposes - in a real app this would call an API
-    if (email === DEMO_ADMIN.email && password === DEMO_ADMIN.password) {
-      const userData = {
-        id: DEMO_ADMIN.id,
-        name: DEMO_ADMIN.name,
-        role: DEMO_ADMIN.role,
-      };
-      
-      setUser(userData);
-      localStorage.setItem("timetale-user", JSON.stringify(userData));
-      
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${userData.name}!`,
+    try {
+      const response = await fetch(`${API_URL}/auth/login.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
       
-      return true;
-    } else {
+      const data = await response.json();
+      
+      if (data.success && data.user) {
+        const userData = {
+          id: data.user.id,
+          name: data.user.name,
+          role: data.user.role,
+        };
+        
+        setUser(userData);
+        localStorage.setItem("timetale-user", JSON.stringify(userData));
+        
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${userData.name}!`,
+        });
+        
+        return true;
+      } else {
+        toast({
+          title: "Login failed",
+          description: data.message || "Invalid email or password",
+          variant: "destructive",
+        });
+        
+        return false;
+      }
+    } catch (error) {
+      console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: "Invalid email or password",
+        description: "An error occurred while logging in. Please try again.",
         variant: "destructive",
       });
       

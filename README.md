@@ -1,23 +1,27 @@
 
+# School Timetable Generator
+
+A web application for generating and managing school timetables.
 
 ## Project info
 
+This project uses:
+- React with TypeScript for the frontend
+- PHP and MySQL for the backend
+- PHPMyAdmin for database management
 
+## Setup Instructions
 
-## How can I edit this code?
+### Backend Setup:
 
-There are several ways of editing your application.
+1. Install a local web server with PHP (like XAMPP, WAMP, or MAMP)
+2. Start your web server and MySQL services
+3. Open PHPMyAdmin (usually at http://localhost/phpmyadmin)
+4. Create a new database named `timetable_db`
+5. Import the `api/db_setup.sql` file to create the database schema
+6. Copy the `api` folder to your web server's document root (e.g., `htdocs` for XAMPP)
 
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Frontend Setup:
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
@@ -29,32 +33,35 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Update API_URL in src/contexts/AuthContext.tsx and DataContext.tsx if needed
+# Default is http://localhost/timetable/api
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Default Login
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Email: youremail@example.com 
+- Password: yourpassword
 
-**Use GitHub Codespaces**
+## Database Configuration
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+You can change database connection settings in `api/config/database.php`:
 
-## What technologies are used for this project?
+```php
+private $host = "localhost";
+private $db_name = "timetable_db";
+private $username = "root";
+private $password = "";
+```
 
-This project is built with .
+## Technologies Used
 
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
-
-
+- PHP
+- MySQL

@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 
 export interface Teacher {
@@ -45,17 +44,19 @@ interface DataContextType {
   subjects: Subject[];
   sections: Section[];
   timetable: Timetable;
-  addTeacher: (teacher: Omit<Teacher, "id">) => void;
-  updateTeacher: (id: string, teacher: Partial<Teacher>) => void;
-  removeTeacher: (id: string) => void;
-  addSubject: (subject: Omit<Subject, "id">) => void;
-  updateSubject: (id: string, subject: Partial<Subject>) => void;
-  removeSubject: (id: string) => void;
-  addSection: (section: Omit<Section, "id">) => void;
-  updateSection: (id: string, section: Partial<Section>) => void;
-  removeSection: (id: string) => void;
-  generateTimetable: () => boolean;
-  resetTimetable: () => void;
+  loading: boolean;
+  addTeacher: (teacher: Omit<Teacher, "id">) => Promise<void>;
+  updateTeacher: (id: string, teacher: Partial<Teacher>) => Promise<void>;
+  removeTeacher: (id: string) => Promise<void>;
+  addSubject: (subject: Omit<Subject, "id">) => Promise<void>;
+  updateSubject: (id: string, subject: Partial<Subject>) => Promise<void>;
+  removeSubject: (id: string) => Promise<void>;
+  addSection: (section: Omit<Section, "id">) => Promise<void>;
+  updateSection: (id: string, section: Partial<Section>) => Promise<void>;
+  removeSection: (id: string) => Promise<void>;
+  generateTimetable: () => Promise<boolean>;
+  resetTimetable: () => Promise<void>;
+  fetchData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -67,6 +68,9 @@ export const useData = () => {
   }
   return context;
 };
+
+// API base URL - update this to your PHP API endpoint
+const API_URL = "http://localhost/timetable/api";
 
 // Helper to generate a unique ID
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -84,94 +88,352 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [timetable, setTimetable] = useState<Timetable>({});
+  const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Function to fetch all data from API
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch teachers
+      const teachersResponse = await fetch(`${API_URL}/teachers/read.php`);
+      const teachersData = await teachersResponse.json();
+      setTeachers(teachersData);
+
+      // Fetch subjects
+      const subjectsResponse = await fetch(`${API_URL}/subjects/read.php`);
+      const subjectsData = await subjectsResponse.json();
+      setSubjects(subjectsData);
+
+      // Fetch sections
+      const sectionsResponse = await fetch(`${API_URL}/sections/read.php`);
+      const sectionsData = await sectionsResponse.json();
+      setSections(sectionsData);
+
+      // Fetch timetable
+      const timetableResponse = await fetch(`${API_URL}/timetable/get.php`);
+      const timetableData = await timetableResponse.json();
+      setTimetable(timetableData);
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast({
+        title: "Data fetch error",
+        description: "There was an error loading data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Teacher operations
-  const addTeacher = (teacher: Omit<Teacher, "id">) => {
-    const newTeacher = { ...teacher, id: generateId() };
-    setTeachers([...teachers, newTeacher]);
-    toast({
-      title: "Teacher added",
-      description: `${teacher.name} has been added to the system`,
-    });
+  const addTeacher = async (teacher: Omit<Teacher, "id">) => {
+    try {
+      const response = await fetch(`${API_URL}/teachers/create.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(teacher),
+      });
+      
+      const data = await response.json();
+      
+      if (data.id) {
+        const newTeacher = { ...teacher, id: data.id };
+        setTeachers([...teachers, newTeacher]);
+        
+        toast({
+          title: "Teacher added",
+          description: `${teacher.name} has been added to the system`,
+        });
+      } else {
+        throw new Error(data.message || "Failed to add teacher");
+      }
+    } catch (error) {
+      console.error("Error adding teacher:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add teacher",
+        variant: "destructive",
+      });
+    }
   };
 
-  const updateTeacher = (id: string, teacherUpdate: Partial<Teacher>) => {
-    setTeachers(
-      teachers.map((t) => (t.id === id ? { ...t, ...teacherUpdate } : t))
-    );
-    toast({
-      title: "Teacher updated",
-      description: "Teacher information has been updated",
-    });
+  const updateTeacher = async (id: string, teacherUpdate: Partial<Teacher>) => {
+    try {
+      const response = await fetch(`${API_URL}/teachers/update.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, ...teacherUpdate }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setTeachers(
+          teachers.map((t) => (t.id === id ? { ...t, ...teacherUpdate } : t))
+        );
+        
+        toast({
+          title: "Teacher updated",
+          description: "Teacher information has been updated",
+        });
+      } else {
+        throw new Error(data.message || "Failed to update teacher");
+      }
+    } catch (error) {
+      console.error("Error updating teacher:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update teacher",
+        variant: "destructive",
+      });
+    }
   };
 
-  const removeTeacher = (id: string) => {
-    setTeachers(teachers.filter((t) => t.id !== id));
-    toast({
-      title: "Teacher removed",
-      description: "Teacher has been removed from the system",
-    });
+  const removeTeacher = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/teachers/delete.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setTeachers(teachers.filter((t) => t.id !== id));
+        
+        toast({
+          title: "Teacher removed",
+          description: "Teacher has been removed from the system",
+        });
+      } else {
+        throw new Error(data.message || "Failed to remove teacher");
+      }
+    } catch (error) {
+      console.error("Error removing teacher:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to remove teacher",
+        variant: "destructive",
+      });
+    }
   };
 
   // Subject operations
-  const addSubject = (subject: Omit<Subject, "id">) => {
-    const newSubject = { ...subject, id: generateId() };
-    setSubjects([...subjects, newSubject]);
-    toast({
-      title: "Subject added",
-      description: `${subject.name} has been added to the system`,
-    });
+  const addSubject = async (subject: Omit<Subject, "id">) => {
+    try {
+      const response = await fetch(`${API_URL}/subjects/create.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subject),
+      });
+      
+      const data = await response.json();
+      
+      if (data.id) {
+        const newSubject = { ...subject, id: data.id };
+        setSubjects([...subjects, newSubject]);
+        
+        toast({
+          title: "Subject added",
+          description: `${subject.name} has been added to the system`,
+        });
+      } else {
+        throw new Error(data.message || "Failed to add subject");
+      }
+    } catch (error) {
+      console.error("Error adding subject:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add subject",
+        variant: "destructive",
+      });
+    }
   };
 
-  const updateSubject = (id: string, subjectUpdate: Partial<Subject>) => {
-    setSubjects(
-      subjects.map((s) => (s.id === id ? { ...s, ...subjectUpdate } : s))
-    );
-    toast({
-      title: "Subject updated",
-      description: "Subject information has been updated",
-    });
+  const updateSubject = async (id: string, subjectUpdate: Partial<Subject>) => {
+    try {
+      const response = await fetch(`${API_URL}/subjects/update.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, ...subjectUpdate }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSubjects(
+          subjects.map((s) => (s.id === id ? { ...s, ...subjectUpdate } : s))
+        );
+        
+        toast({
+          title: "Subject updated",
+          description: "Subject information has been updated",
+        });
+      } else {
+        throw new Error(data.message || "Failed to update subject");
+      }
+    } catch (error) {
+      console.error("Error updating subject:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update subject",
+        variant: "destructive",
+      });
+    }
   };
 
-  const removeSubject = (id: string) => {
-    setSubjects(subjects.filter((s) => s.id !== id));
-    toast({
-      title: "Subject removed",
-      description: "Subject has been removed from the system",
-    });
+  const removeSubject = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/subjects/delete.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSubjects(subjects.filter((s) => s.id !== id));
+        
+        toast({
+          title: "Subject removed",
+          description: "Subject has been removed from the system",
+        });
+      } else {
+        throw new Error(data.message || "Failed to remove subject");
+      }
+    } catch (error) {
+      console.error("Error removing subject:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to remove subject",
+        variant: "destructive",
+      });
+    }
   };
 
   // Section operations
-  const addSection = (section: Omit<Section, "id">) => {
-    const newSection = { ...section, id: generateId() };
-    setSections([...sections, newSection]);
-    toast({
-      title: "Section added",
-      description: `${section.name} has been added to the system`,
-    });
+  const addSection = async (section: Omit<Section, "id">) => {
+    try {
+      const response = await fetch(`${API_URL}/sections/create.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(section),
+      });
+      
+      const data = await response.json();
+      
+      if (data.id) {
+        const newSection = { ...section, id: data.id };
+        setSections([...sections, newSection]);
+        
+        toast({
+          title: "Section added",
+          description: `${section.name} has been added to the system`,
+        });
+      } else {
+        throw new Error(data.message || "Failed to add section");
+      }
+    } catch (error) {
+      console.error("Error adding section:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add section",
+        variant: "destructive",
+      });
+    }
   };
 
-  const updateSection = (id: string, sectionUpdate: Partial<Section>) => {
-    setSections(
-      sections.map((s) => (s.id === id ? { ...s, ...sectionUpdate } : s))
-    );
-    toast({
-      title: "Section updated",
-      description: "Section information has been updated",
-    });
+  const updateSection = async (id: string, sectionUpdate: Partial<Section>) => {
+    try {
+      const response = await fetch(`${API_URL}/sections/update.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, ...sectionUpdate }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSections(
+          sections.map((s) => (s.id === id ? { ...s, ...sectionUpdate } : s))
+        );
+        
+        toast({
+          title: "Section updated",
+          description: "Section information has been updated",
+        });
+      } else {
+        throw new Error(data.message || "Failed to update section");
+      }
+    } catch (error) {
+      console.error("Error updating section:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update section",
+        variant: "destructive",
+      });
+    }
   };
 
-  const removeSection = (id: string) => {
-    setSections(sections.filter((s) => s.id !== id));
-    toast({
-      title: "Section removed",
-      description: "Section has been removed from the system",
-    });
+  const removeSection = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/sections/delete.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSections(sections.filter((s) => s.id !== id));
+        
+        toast({
+          title: "Section removed",
+          description: "Section has been removed from the system",
+        });
+      } else {
+        throw new Error(data.message || "Failed to remove section");
+      }
+    } catch (error) {
+      console.error("Error removing section:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to remove section",
+        variant: "destructive",
+      });
+    }
   };
 
   // Timetable generation
-  const generateTimetable = () => {
+  const generateTimetable = async () => {
     if (teachers.length === 0) {
       toast({
         title: "Unable to generate timetable",
@@ -328,9 +590,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
       setTimetable(newTimetable);
       
+      // After generating the timetable, save it to the database
+      await saveTimetable(newTimetable);
+      
       toast({
         title: "Timetable generated successfully",
-        description: "The timetable has been created without any conflicts",
+        description: "The timetable has been created and saved to the database",
       });
       
       return true;
@@ -345,12 +610,52 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  const resetTimetable = () => {
-    setTimetable({});
-    toast({
-      title: "Timetable reset",
-      description: "The timetable has been cleared",
-    });
+  const saveTimetable = async (timetableData: Timetable) => {
+    try {
+      const response = await fetch(`${API_URL}/timetable/save.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ timetable: timetableData }),
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || "Failed to save timetable");
+      }
+    } catch (error) {
+      console.error("Error saving timetable:", error);
+      throw error;
+    }
+  };
+
+  const resetTimetable = async () => {
+    try {
+      const response = await fetch(`${API_URL}/timetable/reset.php`, {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setTimetable({});
+        toast({
+          title: "Timetable reset",
+          description: "The timetable has been cleared",
+        });
+      } else {
+        throw new Error(data.message || "Failed to reset timetable");
+      }
+    } catch (error) {
+      console.error("Error resetting timetable:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reset timetable",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -360,6 +665,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         subjects,
         sections,
         timetable,
+        loading,
         addTeacher,
         updateTeacher,
         removeTeacher,
@@ -371,6 +677,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         removeSection,
         generateTimetable,
         resetTimetable,
+        fetchData,
       }}
     >
       {children}
