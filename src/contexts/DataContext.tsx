@@ -432,7 +432,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  // Timetable generation
+  // Timetable generation with collision prevention
   const generateTimetable = async () => {
     if (teachers.length === 0) {
       toast({
@@ -480,17 +480,25 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         teacherAssignments[teacher.id] = 0;
       });
 
-      // Track teacher availability by timeslot
-      const teacherAvailability: Record<string, Record<string, Record<number, boolean>>> = {};
+      // Track teacher availability by timeslot across all sections
+      const teacherTimeSlots: Record<string, Record<string, Record<number, boolean>>> = {};
       teachers.forEach((teacher) => {
-        teacherAvailability[teacher.id] = {};
+        teacherTimeSlots[teacher.id] = {};
         DAYS.forEach((day) => {
-          teacherAvailability[teacher.id][day] = {};
+          teacherTimeSlots[teacher.id][day] = {};
           for (let period = 1; period <= PERIODS_PER_DAY; period++) {
-            teacherAvailability[teacher.id][day][period] = true;
+            teacherTimeSlots[teacher.id][day][period] = true;
           }
         });
       });
+
+      // Create a priority queue for subjects based on constraints
+      const subjectPriorities: Array<{ 
+        sectionId: string, 
+        subjectId: string, 
+        hoursNeeded: number,
+        eligibleTeachersCount: number 
+      }> = [];
 
       // For each section and each subject assigned to that section
       sections.forEach((section) => {
@@ -513,80 +521,151 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
             throw new Error(`No teachers available for ${subject.name} in ${section.name}`);
           }
 
-          // Allocate hours
-          let hoursAllocated = 0;
+          // Add to priority queue
+          subjectPriorities.push({
+            sectionId: section.id,
+            subjectId: subject.id,
+            hoursNeeded,
+            eligibleTeachersCount: eligibleTeachers.length
+          });
+        });
+      });
+
+      // Sort subjects by eligibleTeachersCount (ascending) and hoursNeeded (descending)
+      subjectPriorities.sort((a, b) => {
+        if (a.eligibleTeachersCount !== b.eligibleTeachersCount) {
+          return a.eligibleTeachersCount - b.eligibleTeachersCount;
+        }
+        return b.hoursNeeded - a.hoursNeeded;
+      });
+
+      // Process subjects by priority
+      for (const subjectPriority of subjectPriorities) {
+        const { sectionId, subjectId, hoursNeeded } = subjectPriority;
+        
+        // Get the section and subject objects
+        const section = sections.find(s => s.id === sectionId)!;
+        const subject = subjects.find(s => s.id === subjectId)!;
+        
+        // Get eligible teachers
+        const eligibleTeachers = teachers.filter((teacher) => 
+          teacher.subjects.includes(subjectId)
+        );
+
+        // Try to distribute evenly across days
+        let hoursAllocated = 0;
+        
+        // Try to allocate maximum 2 periods per day for a subject if possible
+        const maxPeriodsPerDay = Math.min(2, Math.ceil(hoursNeeded / DAYS.length));
+        
+        // Keep track of allocations per day for this subject
+        const allocationsPerDay: Record<string, number> = {};
+        DAYS.forEach(day => {
+          allocationsPerDay[day] = 0;
+        });
+        
+        // First, try to distribute evenly across days
+        let attempts = 0;
+        const maxAttempts = 50; // Prevent infinite loops
+        
+        while (hoursAllocated < hoursNeeded && attempts < maxAttempts) {
+          attempts++;
           
-          // Try to distribute evenly across days
-          const daysToDistribute = Math.min(hoursNeeded, DAYS.length);
-          const shuffledDays = [...DAYS].sort(() => 0.5 - Math.random());
+          // Find days with fewer allocations first
+          const daysByAllocation = [...DAYS].sort((a, b) => 
+            allocationsPerDay[a] - allocationsPerDay[b]
+          );
           
-          for (let dayIndex = 0; dayIndex < daysToDistribute && hoursAllocated < hoursNeeded; dayIndex++) {
-            const day = shuffledDays[dayIndex];
+          let allocated = false;
+          
+          for (const day of daysByAllocation) {
+            // Skip if already at max periods for this day
+            if (allocationsPerDay[day] >= maxPeriodsPerDay) continue;
             
-            // Try to find an available period and teacher
-            for (let period = 1; period <= PERIODS_PER_DAY && hoursAllocated < hoursNeeded; period++) {
+            // Try to find an available period in this day
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
               // Skip if this slot is already filled
-              if (newTimetable[section.id][day][period] !== null) continue;
+              if (newTimetable[sectionId][day][period] !== null) continue;
               
               // Find an available teacher for this slot
               const availableTeacher = eligibleTeachers.find((teacher) => 
-                teacherAvailability[teacher.id][day][period] && 
+                // Check if teacher is available at this time slot (not assigned to any other section)
+                teacherTimeSlots[teacher.id][day][period] === true && 
+                // Check if teacher hasn't exceeded max hours
                 teacherAssignments[teacher.id] < teacher.maxHours
               );
               
               if (availableTeacher) {
                 // Assign the teacher to this slot
-                newTimetable[section.id][day][period] = {
+                newTimetable[sectionId][day][period] = {
                   teacherId: availableTeacher.id,
-                  subjectId: subject.id,
+                  subjectId,
                 };
                 
-                // Update teacher availability and assignment count
-                teacherAvailability[availableTeacher.id][day][period] = false;
+                // Mark teacher as busy for this time slot across all sections
+                teacherTimeSlots[availableTeacher.id][day][period] = false;
+                
+                // Update teacher assignment count
                 teacherAssignments[availableTeacher.id]++;
+                
+                // Update hours allocated and day allocations
                 hoursAllocated++;
+                allocationsPerDay[day]++;
+                allocated = true;
+                break;
+              }
+            }
+            
+            if (allocated) break;
+          }
+          
+          // If we couldn't allocate in any day, relax the max periods per day constraint
+          if (!allocated) {
+            // If we've tried enough times without success, just try to fit anywhere
+            if (attempts > DAYS.length * 2) {
+              for (const day of DAYS) {
+                for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+                  // Skip if this slot is already filled
+                  if (newTimetable[sectionId][day][period] !== null) continue;
+                  
+                  // Find any available teacher
+                  const availableTeacher = eligibleTeachers.find((teacher) => 
+                    teacherTimeSlots[teacher.id][day][period] === true && 
+                    teacherAssignments[teacher.id] < teacher.maxHours
+                  );
+                  
+                  if (availableTeacher) {
+                    // Assign the teacher to this slot
+                    newTimetable[sectionId][day][period] = {
+                      teacherId: availableTeacher.id,
+                      subjectId,
+                    };
+                    
+                    // Mark teacher as busy for this time slot
+                    teacherTimeSlots[availableTeacher.id][day][period] = false;
+                    teacherAssignments[availableTeacher.id]++;
+                    hoursAllocated++;
+                    allocated = true;
+                    break;
+                  }
+                }
+                if (allocated) break;
               }
             }
           }
           
-          // If we still need to allocate more hours, use any available slots
-          if (hoursAllocated < hoursNeeded) {
-            DAYS.forEach((day) => {
-              for (let period = 1; period <= PERIODS_PER_DAY && hoursAllocated < hoursNeeded; period++) {
-                // Skip if this slot is already filled
-                if (newTimetable[section.id][day][period] !== null) continue;
-                
-                // Find an available teacher for this slot
-                const availableTeacher = eligibleTeachers.find((teacher) => 
-                  teacherAvailability[teacher.id][day][period] && 
-                  teacherAssignments[teacher.id] < teacher.maxHours
-                );
-                
-                if (availableTeacher) {
-                  // Assign the teacher to this slot
-                  newTimetable[section.id][day][period] = {
-                    teacherId: availableTeacher.id,
-                    subjectId: subject.id,
-                  };
-                  
-                  // Update teacher availability and assignment count
-                  teacherAvailability[availableTeacher.id][day][period] = false;
-                  teacherAssignments[availableTeacher.id]++;
-                  hoursAllocated++;
-                }
-              }
-            });
-          }
-          
-          if (hoursAllocated < hoursNeeded) {
-            toast({
-              title: "Warning",
-              description: `Could only allocate ${hoursAllocated}/${hoursNeeded} hours for ${subject.name} in ${section.name}`,
-              variant: "destructive",
-            });
-          }
-        });
-      });
+          // If we still couldn't allocate, break the loop
+          if (!allocated) break;
+        }
+        
+        if (hoursAllocated < hoursNeeded) {
+          toast({
+            title: "Warning",
+            description: `Could only allocate ${hoursAllocated}/${hoursNeeded} hours for ${subject.name} in ${section.name}`,
+            variant: "destructive",
+          });
+        }
+      }
 
       setTimetable(newTimetable);
       
@@ -640,7 +719,19 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const data = await response.json();
       
       if (data.success) {
-        setTimetable({});
+        const emptyTimetable: Timetable = {};
+        sections.forEach((section) => {
+          emptyTimetable[section.id] = {};
+          DAYS.forEach((day) => {
+            emptyTimetable[section.id][day] = {};
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+              emptyTimetable[section.id][day][period] = null;
+            }
+          });
+        });
+        
+        setTimetable(emptyTimetable);
+        
         toast({
           title: "Timetable reset",
           description: "The timetable has been cleared",
