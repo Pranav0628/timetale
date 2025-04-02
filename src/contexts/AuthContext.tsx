@@ -51,6 +51,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Attempting to login with API URL:", API_URL);
+      
       const response = await fetch(`${API_URL}/auth/login.php`, {
         method: 'POST',
         headers: {
@@ -59,7 +61,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
       
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("Login response:", data);
       
       if (data.success && data.user) {
         const userData = {
@@ -88,13 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast({
-        title: "Login failed",
-        description: "An error occurred while logging in. Please try again.",
-        variant: "destructive",
-      });
-      
-      return false;
+      throw error; // Rethrow to be caught by the login form component
     }
   };
 
