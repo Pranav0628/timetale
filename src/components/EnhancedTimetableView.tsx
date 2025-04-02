@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Download, RefreshCw, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 
 // Define time slots with specific times
 const TIME_SLOTS = [
@@ -32,16 +33,101 @@ const PERIOD_MAPPING: Record<number, number> = {
   7: 9
 };
 
+// Lab data
+const LAB_DATA: Record<string, Record<number, string[]>> = {
+  "Monday": {
+    8: [
+      "S7- MPL [DBMS LAB A-420] [Dr. A. Shankhar]",
+      "S8 -DSAL [S/W LAB A-406] [SAN]",
+      "S9 - PBL[N/W LAB A-402] [PDT]"
+    ]
+  },
+  "Thursday": {
+    5: [
+      "S7- DSAL [S/W LAB A-406] [SAN]",
+      "S8 -PBL[PL-II LAB A-413] [PDT]",
+      "S9 - MPL [H/W LAB A-417] [Dr. A. Shankhar]"
+    ]
+  }
+};
+
+// Component for rendering timetable cell content
+const TimetableCell = ({ day, timeSlotId, selectedSection, timetable, getSubjectName, getTeacherName }:
+  {
+    day: string,
+    timeSlotId: number,
+    selectedSection: string,
+    timetable: any,
+    getSubjectName: (subjectId: string) => string,
+    getTeacherName: (teacherId: string) => string
+  }) => {
+  
+  // Handle break slots
+  const timeSlot = TIME_SLOTS.find(ts => ts.id === timeSlotId);
+  if (timeSlot?.type === "break") {
+    return (
+      <div className="text-center font-medium bg-gray-100">
+        {timeSlot.label}
+      </div>
+    );
+  }
+  
+  // Convert time slot to period
+  const periodKey = Object.entries(PERIOD_MAPPING).find(([_, slotId]) => slotId === timeSlotId)?.[0];
+  if (!periodKey) return null;
+  
+  const period = parseInt(periodKey);
+  const slot = timetable[selectedSection]?.[day]?.[period];
+  
+  if (!slot) {
+    // Check for lab data
+    const labEntries = LAB_DATA[day as keyof typeof LAB_DATA]?.[timeSlotId as keyof typeof LAB_DATA[keyof typeof LAB_DATA]];
+    
+    if (labEntries && labEntries.length > 0) {
+      return (
+        <div className="p-1">
+          {labEntries.map((lab, index) => (
+            <div key={index} className="text-xs mb-1">{lab}</div>
+          ))}
+        </div>
+      );
+    }
+    
+    return null;
+  }
+  
+  const subjectName = getSubjectName(slot.subjectId);
+  const teacherName = getTeacherName(slot.teacherId);
+  
+  return (
+    <div className="p-1">
+      <div className="font-medium">{subjectName}</div>
+      <div className="text-xs text-gray-600">[{teacherName}]</div>
+    </div>
+  );
+};
+
+// Header component for timetable
+const TimetableHeader = () => (
+  <div className="text-center py-4 border-b">
+    <h1 className="text-xl font-bold uppercase">K.J. College of Engineering & Management Research, Pune.</h1>
+    <h2 className="text-lg font-medium">DEPARTMENT OF COMPUTER ENGINEERING</h2>
+    <div className="flex justify-center items-center space-x-6 mt-2">
+      <p>Time Table Academic Year: 2024-2025</p>
+      <p>SEMESTER-II</p>
+      <p>Section: SE-B</p>
+    </div>
+    <p className="mt-1">Class Room No: 13</p>
+  </div>
+);
+
 const EnhancedTimetableView: React.FC = () => {
   const { sections, teachers, subjects, timetable, generateTimetable, resetTimetable, loading } = useData();
+  const { toast } = useToast();
   const [selectedSection, setSelectedSection] = useState<string | undefined>(
     sections.length > 0 ? sections[0].id : undefined
   );
   const [isGenerating, setIsGenerating] = useState(false);
-  const [academicYear] = useState("2024-2025");
-  const [semester] = useState("SEMESTER-II");
-  const [department] = useState("DEPARTMENT OF COMPUTER ENGINEERING");
-  const [roomNo] = useState("13");
 
   const getTeacherName = (teacherId: string) => {
     const teacher = teachers.find((t) => t.id === teacherId);
@@ -57,16 +143,26 @@ const EnhancedTimetableView: React.FC = () => {
     setIsGenerating(true);
     try {
       await generateTimetable();
+      toast({
+        title: "Success",
+        description: "Timetable generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate timetable",
+        variant: "destructive",
+      });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const exportToPDF = () => {
+  const handlePrint = () => {
     window.print();
   };
 
-  const handlePrint = () => {
+  const exportToPDF = () => {
     window.print();
   };
 
@@ -88,81 +184,6 @@ const EnhancedTimetableView: React.FC = () => {
 
   const hasData = teachers.length > 0 && subjects.length > 0 && sections.length > 0;
   const hasSelectedSection = selectedSection && timetable[selectedSection];
-  
-  const formatCell = (day: string, timeSlotId: number) => {
-    if (!hasSelectedSection) return null;
-    
-    // Handle break slots
-    const timeSlot = TIME_SLOTS.find(ts => ts.id === timeSlotId);
-    if (timeSlot?.type === "break") {
-      return (
-        <div className="text-center font-medium bg-gray-100">
-          {timeSlot.label}
-        </div>
-      );
-    }
-    
-    // Convert time slot to period
-    const periodKey = Object.entries(PERIOD_MAPPING).find(([_, slotId]) => slotId === timeSlotId)?.[0];
-    if (!periodKey) return null;
-    
-    const period = parseInt(periodKey);
-    const slot = timetable[selectedSection]?.[day]?.[period];
-    
-    if (!slot) return null;
-    
-    const subjectName = getSubjectName(slot.subjectId);
-    const teacherName = getTeacherName(slot.teacherId);
-    
-    return (
-      <div className="p-1">
-        <div className="font-medium">{subjectName}</div>
-        <div className="text-xs text-gray-600">[{teacherName}]</div>
-      </div>
-    );
-  };
-
-  const renderLabs = (day: string, timeSlotId: number) => {
-    // This is a placeholder for lab sections - in a real implementation, 
-    // you would have more data about lab sections and groups
-    if (!hasSelectedSection) return null;
-    
-    // Check if this is a regular period
-    if (TIME_SLOTS.find(ts => ts.id === timeSlotId)?.type !== "regular") {
-      return null;
-    }
-    
-    // For demonstration, we'll show some sample lab data for specific time slots
-    // In a real app, this would come from your timetable data
-    const labData = {
-      "Monday": {
-        8: [
-          "S7- MPL [DBMS LAB A-420] [Dr. A. Shankhar]",
-          "S8 -DSAL [S/W LAB A-406] [SAN]",
-          "S9 - PBL[N/W LAB A-402] [PDT]"
-        ]
-      },
-      "Thursday": {
-        5: [
-          "S7- DSAL [S/W LAB A-406] [SAN]",
-          "S8 -PBL[PL-II LAB A-413] [PDT]",
-          "S9 - MPL [H/W LAB A-417] [Dr. A. Shankhar]"
-        ]
-      }
-    };
-    
-    const currentLabData = labData[day as keyof typeof labData]?.[timeSlotId as keyof typeof labData[keyof typeof labData]];
-    
-    if (!currentLabData) return null;
-    
-    return (
-      <div className="p-1">
-        {currentLabData.map((lab, index) => (
-          <div key={index} className="text-xs mb-1">{lab}</div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -237,17 +258,7 @@ const EnhancedTimetableView: React.FC = () => {
       ) : hasSelectedSection ? (
         <div className="bg-white rounded-lg border shadow-sm overflow-auto print:shadow-none">
           <div className="min-w-[900px]">
-            {/* College Header */}
-            <div className="text-center py-4 border-b">
-              <h1 className="text-xl font-bold uppercase">K.J. College of Engineering & Management Research, Pune.</h1>
-              <h2 className="text-lg font-medium">{department}</h2>
-              <div className="flex justify-center items-center space-x-6 mt-2">
-                <p>Time Table Academic Year: {academicYear}</p>
-                <p>{semester}</p>
-                <p>Section: {sections.find(s => s.id === selectedSection)?.name}</p>
-              </div>
-              <p className="mt-1">Class Room No: {roomNo}</p>
-            </div>
+            <TimetableHeader />
             
             <Table>
               <TableHeader>
@@ -277,8 +288,14 @@ const EnhancedTimetableView: React.FC = () => {
                         key={slot.id} 
                         className={`border ${slot.type === 'break' ? 'bg-gray-100' : ''} p-1`}
                       >
-                        {formatCell(day, slot.id)}
-                        {renderLabs(day, slot.id)}
+                        <TimetableCell
+                          day={day}
+                          timeSlotId={slot.id}
+                          selectedSection={selectedSection}
+                          timetable={timetable}
+                          getSubjectName={getSubjectName}
+                          getTeacherName={getTeacherName}
+                        />
                       </TableCell>
                     ))}
                   </TableRow>
@@ -305,8 +322,7 @@ const EnhancedTimetableView: React.FC = () => {
         </Card>
       )}
 
-      {/* Print Styles - These will only apply when printing */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body * {
             visibility: hidden;
@@ -324,7 +340,7 @@ const EnhancedTimetableView: React.FC = () => {
             size: landscape;
           }
         }
-      `}</style>
+      `}} />
     </div>
   );
 };
