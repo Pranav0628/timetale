@@ -10,8 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
 
 const LoginForm: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@timetale.com");
+  const [password, setPassword] = useState("admin123");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { login } = useAuth();
@@ -30,7 +30,7 @@ const LoginForm: React.FC = () => {
     } catch (error) {
       console.error("Login error:", error);
       setErrorMessage(
-        "Unable to connect to the server. Please ensure the backend is running and accessible. Check that your API URL is correctly configured and the server is running."
+        "Unable to connect to the server. Using mockup mode for frontend testing."
       );
     } finally {
       setIsLoading(false);
@@ -54,6 +54,13 @@ const LoginForm: React.FC = () => {
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
+          
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Mockup mode is enabled. You can log in without a backend server running.
+            </AlertDescription>
+          </Alert>
           
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>

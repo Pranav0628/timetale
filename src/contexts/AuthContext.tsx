@@ -33,7 +33,7 @@ interface AuthProviderProps {
 const API_URL = "http://localhost/timetable/api";
 
 // Enable this for frontend testing without a backend
-const ENABLE_MOCKUP = false;
+const ENABLE_MOCKUP = true; // Changed to true to enable mockup mode
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
