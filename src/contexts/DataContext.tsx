@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -72,6 +73,9 @@ export const useData = () => {
 // API base URL - update this to your PHP API endpoint
 const API_URL = "http://localhost/timetable/api";
 
+// Enable this for frontend testing without a backend - matching the AuthContext setting
+const ENABLE_MOCKUP = true;
+
 // Helper to generate a unique ID
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -100,33 +104,115 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch teachers
-      const teachersResponse = await fetch(`${API_URL}/teachers/read.php`);
-      const teachersData = await teachersResponse.json();
-      setTeachers(teachersData);
+      if (ENABLE_MOCKUP) {
+        console.log("Using mockup data mode");
+        
+        // Mock teachers
+        const mockTeachers: Teacher[] = [
+          { id: "t1", name: "John Smith", subjects: ["s1", "s2"], maxHours: 30 },
+          { id: "t2", name: "Jane Doe", subjects: ["s2", "s3"], maxHours: 25 },
+          { id: "t3", name: "Bob Johnson", subjects: ["s1", "s4"], maxHours: 20 },
+        ];
+        setTeachers(mockTeachers);
 
-      // Fetch subjects
-      const subjectsResponse = await fetch(`${API_URL}/subjects/read.php`);
-      const subjectsData = await subjectsResponse.json();
-      setSubjects(subjectsData);
+        // Mock subjects
+        const mockSubjects: Subject[] = [
+          { id: "s1", name: "Mathematics", sections: ["sec1"], hoursPerWeek: { "sec1": 5 } },
+          { id: "s2", name: "Physics", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
+          { id: "s3", name: "Chemistry", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
+          { id: "s4", name: "Biology", sections: ["sec1"], hoursPerWeek: { "sec1": 3 } },
+        ];
+        setSubjects(mockSubjects);
 
-      // Fetch sections
-      const sectionsResponse = await fetch(`${API_URL}/sections/read.php`);
-      const sectionsData = await sectionsResponse.json();
-      setSections(sectionsData);
+        // Mock sections
+        const mockSections: Section[] = [
+          { id: "sec1", name: "Class 10-A" },
+        ];
+        setSections(mockSections);
 
-      // Fetch timetable
-      const timetableResponse = await fetch(`${API_URL}/timetable/get.php`);
-      const timetableData = await timetableResponse.json();
-      setTimetable(timetableData);
+        // Mock empty timetable
+        const mockTimetable: Timetable = {};
+        mockSections.forEach((section) => {
+          mockTimetable[section.id] = {};
+          DAYS.forEach((day) => {
+            mockTimetable[section.id][day] = {};
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+              mockTimetable[section.id][day][period] = null;
+            }
+          });
+        });
+        setTimetable(mockTimetable);
+        
+        toast({
+          title: "Mock data loaded",
+          description: "Using sample data for frontend testing",
+        });
+      } else {
+        // Fetch teachers from API
+        const teachersResponse = await fetch(`${API_URL}/teachers/read.php`);
+        const teachersData = await teachersResponse.json();
+        setTeachers(teachersData);
 
+        // Fetch subjects
+        const subjectsResponse = await fetch(`${API_URL}/subjects/read.php`);
+        const subjectsData = await subjectsResponse.json();
+        setSubjects(subjectsData);
+
+        // Fetch sections
+        const sectionsResponse = await fetch(`${API_URL}/sections/read.php`);
+        const sectionsData = await sectionsResponse.json();
+        setSections(sectionsData);
+
+        // Fetch timetable
+        const timetableResponse = await fetch(`${API_URL}/timetable/get.php`);
+        const timetableData = await timetableResponse.json();
+        setTimetable(timetableData);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
         title: "Data fetch error",
-        description: "There was an error loading data. Please try again.",
+        description: "Using mockup mode for frontend testing.",
         variant: "destructive",
       });
+      
+      // If API fetch fails, fallback to mockup data
+      if (!ENABLE_MOCKUP) {
+        console.log("Falling back to mockup data after API failure");
+        
+        // Same mockup data as above
+        const mockTeachers: Teacher[] = [
+          { id: "t1", name: "John Smith", subjects: ["s1", "s2"], maxHours: 30 },
+          { id: "t2", name: "Jane Doe", subjects: ["s2", "s3"], maxHours: 25 },
+          { id: "t3", name: "Bob Johnson", subjects: ["s1", "s4"], maxHours: 20 },
+        ];
+        setTeachers(mockTeachers);
+
+        const mockSubjects: Subject[] = [
+          { id: "s1", name: "Mathematics", sections: ["sec1"], hoursPerWeek: { "sec1": 5 } },
+          { id: "s2", name: "Physics", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
+          { id: "s3", name: "Chemistry", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
+          { id: "s4", name: "Biology", sections: ["sec1"], hoursPerWeek: { "sec1": 3 } },
+        ];
+        setSubjects(mockSubjects);
+
+        const mockSections: Section[] = [
+          { id: "sec1", name: "Class 10-A" },
+        ];
+        setSections(mockSections);
+
+        const mockTimetable: Timetable = {};
+        mockSections.forEach((section) => {
+          mockTimetable[section.id] = {};
+          DAYS.forEach((day) => {
+            mockTimetable[section.id][day] = {};
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+              mockTimetable[section.id][day][period] = null;
+            }
+          });
+        });
+        setTimetable(mockTimetable);
+      }
     } finally {
       setLoading(false);
     }
@@ -135,6 +221,18 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   // Teacher operations
   const addTeacher = async (teacher: Omit<Teacher, "id">) => {
     try {
+      if (ENABLE_MOCKUP) {
+        const newTeacher = { ...teacher, id: generateId() };
+        setTeachers([...teachers, newTeacher]);
+        
+        toast({
+          title: "Teacher added (Mock Mode)",
+          description: `${teacher.name} has been added to the system`,
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/teachers/create.php`, {
         method: 'POST',
         headers: {
@@ -166,8 +264,22 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
+  // Teacher update - mockup enabled
   const updateTeacher = async (id: string, teacherUpdate: Partial<Teacher>) => {
     try {
+      if (ENABLE_MOCKUP) {
+        setTeachers(
+          teachers.map((t) => (t.id === id ? { ...t, ...teacherUpdate } : t))
+        );
+        
+        toast({
+          title: "Teacher updated (Mock Mode)",
+          description: "Teacher information has been updated",
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/teachers/update.php`, {
         method: 'POST',
         headers: {
@@ -200,8 +312,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
+  // Teacher removal - mockup enabled
   const removeTeacher = async (id: string) => {
     try {
+      if (ENABLE_MOCKUP) {
+        setTeachers(teachers.filter((t) => t.id !== id));
+        
+        toast({
+          title: "Teacher removed (Mock Mode)",
+          description: "Teacher has been removed from the system",
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/teachers/delete.php`, {
         method: 'POST',
         headers: {
@@ -232,9 +356,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  // Subject operations
+  // Subject operations - with mockup mode
   const addSubject = async (subject: Omit<Subject, "id">) => {
     try {
+      if (ENABLE_MOCKUP) {
+        const newSubject = { ...subject, id: generateId() };
+        setSubjects([...subjects, newSubject]);
+        
+        toast({
+          title: "Subject added (Mock Mode)",
+          description: `${subject.name} has been added to the system`,
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/subjects/create.php`, {
         method: 'POST',
         headers: {
@@ -266,8 +402,22 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
+  // Subject update - with mockup mode
   const updateSubject = async (id: string, subjectUpdate: Partial<Subject>) => {
     try {
+      if (ENABLE_MOCKUP) {
+        setSubjects(
+          subjects.map((s) => (s.id === id ? { ...s, ...subjectUpdate } : s))
+        );
+        
+        toast({
+          title: "Subject updated (Mock Mode)",
+          description: "Subject information has been updated",
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/subjects/update.php`, {
         method: 'POST',
         headers: {
@@ -300,8 +450,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
+  // Subject removal - with mockup mode
   const removeSubject = async (id: string) => {
     try {
+      if (ENABLE_MOCKUP) {
+        setSubjects(subjects.filter((s) => s.id !== id));
+        
+        toast({
+          title: "Subject removed (Mock Mode)",
+          description: "Subject has been removed from the system",
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/subjects/delete.php`, {
         method: 'POST',
         headers: {
@@ -332,9 +494,33 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  // Section operations
+  // Section operations - with mockup mode support
   const addSection = async (section: Omit<Section, "id">) => {
     try {
+      if (ENABLE_MOCKUP) {
+        const newId = generateId();
+        const newSection = { ...section, id: newId };
+        setSections([...sections, newSection]);
+        
+        // Update the timetable object to include the new section
+        const newTimetable = { ...timetable };
+        newTimetable[newId] = {};
+        DAYS.forEach((day) => {
+          newTimetable[newId][day] = {};
+          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+            newTimetable[newId][day][period] = null;
+          }
+        });
+        setTimetable(newTimetable);
+        
+        toast({
+          title: "Section added (Mock Mode)",
+          description: `${section.name} has been added to the system`,
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/sections/create.php`, {
         method: 'POST',
         headers: {
@@ -366,8 +552,22 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
+  // Section update - with mockup mode
   const updateSection = async (id: string, sectionUpdate: Partial<Section>) => {
     try {
+      if (ENABLE_MOCKUP) {
+        setSections(
+          sections.map((s) => (s.id === id ? { ...s, ...sectionUpdate } : s))
+        );
+        
+        toast({
+          title: "Section updated (Mock Mode)",
+          description: "Section information has been updated",
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/sections/update.php`, {
         method: 'POST',
         headers: {
@@ -400,8 +600,25 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
+  // Section removal - with mockup mode
   const removeSection = async (id: string) => {
     try {
+      if (ENABLE_MOCKUP) {
+        setSections(sections.filter((s) => s.id !== id));
+        
+        // Remove section from timetable
+        const newTimetable = { ...timetable };
+        delete newTimetable[id];
+        setTimetable(newTimetable);
+        
+        toast({
+          title: "Section removed (Mock Mode)",
+          description: "Section has been removed from the system",
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/sections/delete.php`, {
         method: 'POST',
         headers: {
@@ -432,7 +649,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  // Timetable generation with collision prevention
+  // Timetable generation with collision prevention - with mockup mode
   const generateTimetable = async () => {
     if (teachers.length === 0) {
       toast({
@@ -669,13 +886,15 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
       setTimetable(newTimetable);
       
-      // After generating the timetable, save it to the database
-      await saveTimetable(newTimetable);
-      
-      toast({
-        title: "Timetable generated successfully",
-        description: "The timetable has been created and saved to the database",
-      });
+      // After generating the timetable, save it to the database if not in mockup mode
+      if (!ENABLE_MOCKUP) {
+        await saveTimetable(newTimetable);
+      } else {
+        toast({
+          title: "Timetable generated successfully (Mock Mode)",
+          description: "The timetable has been created",
+        });
+      }
       
       return true;
     } catch (error) {
@@ -690,6 +909,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   };
 
   const saveTimetable = async (timetableData: Timetable) => {
+    // Skip API call in mockup mode
+    if (ENABLE_MOCKUP) {
+      return { success: true };
+    }
+    
     try {
       const response = await fetch(`${API_URL}/timetable/save.php`, {
         method: 'POST',
@@ -704,6 +928,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       if (!data.success) {
         throw new Error(data.message || "Failed to save timetable");
       }
+      
+      return data;
     } catch (error) {
       console.error("Error saving timetable:", error);
       throw error;
@@ -712,6 +938,28 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const resetTimetable = async () => {
     try {
+      if (ENABLE_MOCKUP) {
+        const emptyTimetable: Timetable = {};
+        sections.forEach((section) => {
+          emptyTimetable[section.id] = {};
+          DAYS.forEach((day) => {
+            emptyTimetable[section.id][day] = {};
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+              emptyTimetable[section.id][day][period] = null;
+            }
+          });
+        });
+        
+        setTimetable(emptyTimetable);
+        
+        toast({
+          title: "Timetable reset (Mock Mode)",
+          description: "The timetable has been cleared",
+        });
+        return;
+      }
+      
+      // Regular API call if not in mockup mode
       const response = await fetch(`${API_URL}/timetable/reset.php`, {
         method: 'POST',
       });
