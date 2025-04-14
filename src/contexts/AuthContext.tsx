@@ -32,6 +32,9 @@ interface AuthProviderProps {
 // API base URL - update this to your PHP API endpoint
 const API_URL = "http://localhost/timetable/api";
 
+// Enable this for frontend testing without a backend
+const ENABLE_MOCKUP = false;
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
@@ -53,6 +56,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log("Attempting to login with API URL:", API_URL);
       
+      // Mockup mode for frontend testing without backend
+      if (ENABLE_MOCKUP) {
+        console.log("Using mockup login mode");
+        
+        // Demo credentials check
+        if (email === "admin@timetale.com" && password === "admin123") {
+          const userData = {
+            id: "1",
+            name: "Admin User",
+            role: "admin",
+          };
+          
+          setUser(userData);
+          localStorage.setItem("timetale-user", JSON.stringify(userData));
+          
+          toast({
+            title: "Login successful (Mock Mode)",
+            description: `Welcome back, ${userData.name}!`,
+          });
+          
+          return true;
+        } else {
+          toast({
+            title: "Login failed",
+            description: "Invalid email or password",
+            variant: "destructive",
+          });
+          
+          return false;
+        }
+      }
+      
+      // Regular mode - connects to actual backend
       // Check server availability first
       const timeout = 5000; // 5 seconds timeout
       
