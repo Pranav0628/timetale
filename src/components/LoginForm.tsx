@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -30,7 +30,7 @@ const LoginForm: React.FC = () => {
     } catch (error) {
       console.error("Login error:", error);
       setErrorMessage(
-        "Unable to connect to the server. Please ensure the backend is running and accessible."
+        "Unable to connect to the server. Please ensure the backend is running and accessible. Check that your API URL is correctly configured and the server is running."
       );
     } finally {
       setIsLoading(false);
@@ -50,7 +50,7 @@ const LoginForm: React.FC = () => {
           {errorMessage && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
+              <AlertTitle>Connection Error</AlertTitle>
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}

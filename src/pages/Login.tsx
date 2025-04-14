@@ -25,10 +25,12 @@ const Login: React.FC = () => {
                 <p className="mb-2"><strong>Server Setup Instructions:</strong></p>
                 <ol className="list-decimal pl-5 space-y-1 text-sm">
                   <li>Install a local server like XAMPP or WAMP</li>
-                  <li>Copy the <code>api</code> folder to your web server directory (e.g., htdocs)</li>
+                  <li>Start Apache and MySQL services in your server control panel</li>
+                  <li>Copy the <code>api</code> folder to your web server directory (e.g., htdocs/timetable/)</li>
                   <li>Create a MySQL database named <code>timetable_db</code></li>
-                  <li>Import the <code>api/db_setup.sql</code> file</li>
-                  <li>Ensure the API URL in the code matches your server configuration</li>
+                  <li>Import the <code>api/db_setup.sql</code> file into your database</li>
+                  <li>Verify the API URL in <code>src/contexts/AuthContext.tsx</code> and <code>src/contexts/DataContext.tsx</code> matches your server path (default: http://localhost/timetable/api)</li>
+                  <li>Test the API by navigating to <code>http://localhost/timetable/api/teachers/read.php</code> in your browser</li>
                 </ol>
               </AlertDescription>
             </Alert>

@@ -53,12 +53,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log("Attempting to login with API URL:", API_URL);
       
+      // Check server availability first
+      const timeout = 5000; // 5 seconds timeout
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
       const response = await fetch(`${API_URL}/auth/login.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        signal: controller.signal
+      }).finally(() => {
+        clearTimeout(timeoutId);
       });
       
       if (!response.ok) {
@@ -95,6 +104,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error("Login error:", error);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error("Request timeout - server might be down");
+          toast({
+            title: "Connection timeout",
+            description: "The server is not responding. Please check your server configuration.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Connection failed",
+            description: "Could not connect to the server. Please ensure it's running and accessible.",
+            variant: "destructive",
+          });
+        }
+      }
       throw error; // Rethrow to be caught by the login form component
     }
   };
