@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useData, Subject, Section } from "@/contexts/DataContext";
+import { useData, Subject, Section, LAB_LOCATIONS } from "@/contexts/DataContext";
 import { Check, X } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SubjectFormProps {
   subject?: Subject;
@@ -18,6 +20,8 @@ const SubjectForm: React.FC<SubjectFormProps> = ({ subject, onSubmit, onCancel }
   const [name, setName] = useState("");
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [hoursPerSection, setHoursPerSection] = useState<Record<string, number>>({});
+  const [type, setType] = useState<"lecture" | "lab">("lecture");
+  const [location, setLocation] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize form if editing
@@ -26,6 +30,8 @@ const SubjectForm: React.FC<SubjectFormProps> = ({ subject, onSubmit, onCancel }
       setName(subject.name);
       setSelectedSections(subject.sections);
       setHoursPerSection(subject.hoursPerWeek);
+      setType(subject.type || "lecture");
+      setLocation(subject.location || "");
     }
   }, [subject]);
 
@@ -44,6 +50,8 @@ const SubjectForm: React.FC<SubjectFormProps> = ({ subject, onSubmit, onCancel }
         name,
         sections: selectedSections,
         hoursPerWeek: filteredHours,
+        type,
+        location: type === "lab" ? location : undefined,
       };
       
       if (subject) {
@@ -100,6 +108,45 @@ const SubjectForm: React.FC<SubjectFormProps> = ({ subject, onSubmit, onCancel }
           </div>
           
           <div className="space-y-2">
+            <Label>Subject Type</Label>
+            <RadioGroup 
+              value={type} 
+              onValueChange={(value) => setType(value as "lecture" | "lab")}
+              className="flex space-x-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="lecture" id="lecture" />
+                <Label htmlFor="lecture">Lecture</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="lab" id="lab" />
+                <Label htmlFor="lab">Lab</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          
+          {type === "lab" && (
+            <div className="space-y-2">
+              <Label htmlFor="location">Lab Location</Label>
+              <Select
+                value={location}
+                onValueChange={setLocation}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select lab location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LAB_LOCATIONS.map((loc) => (
+                    <SelectItem key={loc} value={loc}>
+                      {loc}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          <div className="space-y-2">
             <Label>Sections & Hours per Week</Label>
             <div className="space-y-2 mt-1">
               {sections.length > 0 ? (
@@ -151,7 +198,7 @@ const SubjectForm: React.FC<SubjectFormProps> = ({ subject, onSubmit, onCancel }
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || name.trim() === '' || selectedSections.length === 0}>
+          <Button type="submit" disabled={isSubmitting || name.trim() === '' || selectedSections.length === 0 || (type === "lab" && !location)}>
             {isSubmitting ? "Saving..." : (subject ? "Update Subject" : "Add Subject")}
           </Button>
         </CardFooter>

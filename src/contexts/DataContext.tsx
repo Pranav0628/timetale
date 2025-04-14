@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -14,6 +13,8 @@ export interface Subject {
   name: string;
   sections: string[];
   hoursPerWeek: Record<string, number>; // section -> hours per week
+  type: "lecture" | "lab"; // Added subject type
+  location?: string; // Optional location for labs
 }
 
 export interface Section {
@@ -35,6 +36,8 @@ export interface Timetable {
       [period: number]: {
         teacherId: string;
         subjectId: string;
+        type?: "lecture" | "lab"; // Add type to the timetable slot
+        location?: string; // Add location to the timetable slot
       } | null;
     };
   };
@@ -83,6 +86,15 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 export const PERIODS_PER_DAY = 8;
 
+// Lab locations
+export const LAB_LOCATIONS = [
+  "DBMS LAB A-420",
+  "S/W LAB A-406",
+  "N/W LAB A-402",
+  "H/W LAB A-417",
+  "PL-II LAB A-413"
+];
+
 interface DataProviderProps {
   children: ReactNode;
 }
@@ -109,24 +121,32 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         
         // Mock teachers
         const mockTeachers: Teacher[] = [
-          { id: "t1", name: "John Smith", subjects: ["s1", "s2"], maxHours: 30 },
+          { id: "t1", name: "Dr. A. Shankhar", subjects: ["s1", "s5"], maxHours: 30 },
           { id: "t2", name: "Jane Doe", subjects: ["s2", "s3"], maxHours: 25 },
           { id: "t3", name: "Bob Johnson", subjects: ["s1", "s4"], maxHours: 20 },
+          { id: "t4", name: "SAN", subjects: ["s6"], maxHours: 15 },
+          { id: "t5", name: "PDT", subjects: ["s7"], maxHours: 15 },
         ];
         setTeachers(mockTeachers);
 
-        // Mock subjects
+        // Mock subjects with type (lab or lecture)
         const mockSubjects: Subject[] = [
-          { id: "s1", name: "Mathematics", sections: ["sec1"], hoursPerWeek: { "sec1": 5 } },
-          { id: "s2", name: "Physics", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
-          { id: "s3", name: "Chemistry", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
-          { id: "s4", name: "Biology", sections: ["sec1"], hoursPerWeek: { "sec1": 3 } },
+          { id: "s1", name: "Mathematics", sections: ["sec1"], hoursPerWeek: { "sec1": 5 }, type: "lecture" },
+          { id: "s2", name: "Physics", sections: ["sec1"], hoursPerWeek: { "sec1": 4 }, type: "lecture" },
+          { id: "s3", name: "Chemistry", sections: ["sec1"], hoursPerWeek: { "sec1": 4 }, type: "lecture" },
+          { id: "s4", name: "Biology", sections: ["sec1"], hoursPerWeek: { "sec1": 3 }, type: "lecture" },
+          { id: "s5", name: "MPL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "DBMS LAB A-420" },
+          { id: "s6", name: "DSAL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "S/W LAB A-406" },
+          { id: "s7", name: "PBL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "N/W LAB A-402" },
         ];
         setSubjects(mockSubjects);
 
         // Mock sections
         const mockSections: Section[] = [
           { id: "sec1", name: "Class 10-A" },
+          { id: "s7", name: "S7" },
+          { id: "s8", name: "S8" },
+          { id: "s9", name: "S9" },
         ];
         setSections(mockSections);
 
@@ -182,22 +202,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         
         // Same mockup data as above
         const mockTeachers: Teacher[] = [
-          { id: "t1", name: "John Smith", subjects: ["s1", "s2"], maxHours: 30 },
+          { id: "t1", name: "Dr. A. Shankhar", subjects: ["s1", "s5"], maxHours: 30 },
           { id: "t2", name: "Jane Doe", subjects: ["s2", "s3"], maxHours: 25 },
           { id: "t3", name: "Bob Johnson", subjects: ["s1", "s4"], maxHours: 20 },
+          { id: "t4", name: "SAN", subjects: ["s6"], maxHours: 15 },
+          { id: "t5", name: "PDT", subjects: ["s7"], maxHours: 15 },
         ];
         setTeachers(mockTeachers);
 
         const mockSubjects: Subject[] = [
-          { id: "s1", name: "Mathematics", sections: ["sec1"], hoursPerWeek: { "sec1": 5 } },
-          { id: "s2", name: "Physics", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
-          { id: "s3", name: "Chemistry", sections: ["sec1"], hoursPerWeek: { "sec1": 4 } },
-          { id: "s4", name: "Biology", sections: ["sec1"], hoursPerWeek: { "sec1": 3 } },
+          { id: "s1", name: "Mathematics", sections: ["sec1"], hoursPerWeek: { "sec1": 5 }, type: "lecture" },
+          { id: "s2", name: "Physics", sections: ["sec1"], hoursPerWeek: { "sec1": 4 }, type: "lecture" },
+          { id: "s3", name: "Chemistry", sections: ["sec1"], hoursPerWeek: { "sec1": 4 }, type: "lecture" },
+          { id: "s4", name: "Biology", sections: ["sec1"], hoursPerWeek: { "sec1": 3 }, type: "lecture" },
+          { id: "s5", name: "MPL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "DBMS LAB A-420" },
+          { id: "s6", name: "DSAL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "S/W LAB A-406" },
+          { id: "s7", name: "PBL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "N/W LAB A-402" },
         ];
         setSubjects(mockSubjects);
 
         const mockSections: Section[] = [
           { id: "sec1", name: "Class 10-A" },
+          { id: "s7", name: "S7" },
+          { id: "s8", name: "S8" },
+          { id: "s9", name: "S9" },
         ];
         setSections(mockSections);
 
@@ -649,7 +677,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  // Timetable generation with collision prevention - with mockup mode
+  // Timetable generation with lab/lecture distinction - with mockup mode
   const generateTimetable = async () => {
     if (teachers.length === 0) {
       toast({
@@ -714,7 +742,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         sectionId: string, 
         subjectId: string, 
         hoursNeeded: number,
-        eligibleTeachersCount: number 
+        eligibleTeachersCount: number,
+        type: "lecture" | "lab",
+        location?: string
       }> = [];
 
       // For each section and each subject assigned to that section
@@ -743,22 +773,90 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
             sectionId: section.id,
             subjectId: subject.id,
             hoursNeeded,
-            eligibleTeachersCount: eligibleTeachers.length
+            eligibleTeachersCount: eligibleTeachers.length,
+            type: subject.type,
+            location: subject.location
           });
         });
       });
 
-      // Sort subjects by eligibleTeachersCount (ascending) and hoursNeeded (descending)
+      // Sort subjects by type (lab first), eligibleTeachersCount (ascending) and hoursNeeded (descending)
       subjectPriorities.sort((a, b) => {
+        // Labs get higher priority
+        if (a.type !== b.type) {
+          return a.type === "lab" ? -1 : 1;
+        }
         if (a.eligibleTeachersCount !== b.eligibleTeachersCount) {
           return a.eligibleTeachersCount - b.eligibleTeachersCount;
         }
         return b.hoursNeeded - a.hoursNeeded;
       });
 
-      // Process subjects by priority
+      // Special lab allocation for specific sections (S7, S8, S9)
+      // Special lab slots from LAB_DATA in EnhancedTimetableView.tsx
+      const specialLabSlots = {
+        "Monday": {
+          8: ["s7", "s8", "s9"]  // Monday, 8th period for S7, S8, S9
+        },
+        "Thursday": {
+          5: ["s7", "s8", "s9"]  // Thursday, 5th period for S7, S8, S9
+        }
+      };
+
+      // Allocate the special lab slots first
+      for (const day in specialLabSlots) {
+        for (const periodStr in specialLabSlots[day as keyof typeof specialLabSlots]) {
+          const period = parseInt(periodStr);
+          const sectionIds = specialLabSlots[day as keyof typeof specialLabSlots][period as keyof typeof specialLabSlots[keyof typeof specialLabSlots]];
+          
+          // For each section that needs a lab at this specific time
+          sectionIds.forEach((sectionId, index) => {
+            // Find a lab subject for this section
+            const labSubject = subjects.find(s => 
+              s.type === "lab" && 
+              s.sections.includes(sectionId)
+            );
+
+            if (labSubject) {
+              // Find an eligible teacher
+              const eligibleTeacher = teachers.find(t => 
+                t.subjects.includes(labSubject.id) && 
+                teacherTimeSlots[t.id][day][period] === true &&
+                teacherAssignments[t.id] < t.maxHours
+              );
+
+              if (eligibleTeacher) {
+                // Assign the lab
+                newTimetable[sectionId][day][period] = {
+                  teacherId: eligibleTeacher.id,
+                  subjectId: labSubject.id,
+                  type: "lab",
+                  location: labSubject.location
+                };
+                
+                // Mark teacher as busy
+                teacherTimeSlots[eligibleTeacher.id][day][period] = false;
+                teacherAssignments[eligibleTeacher.id]++;
+                
+                // Remove one hour from needed hours
+                const matchingPriority = subjectPriorities.find(p => 
+                  p.sectionId === sectionId && p.subjectId === labSubject.id
+                );
+                if (matchingPriority) {
+                  matchingPriority.hoursNeeded--;
+                }
+              }
+            }
+          });
+        }
+      }
+
+      // Process remaining subjects by priority
       for (const subjectPriority of subjectPriorities) {
-        const { sectionId, subjectId, hoursNeeded } = subjectPriority;
+        let { sectionId, subjectId, hoursNeeded, type, location } = subjectPriority;
+        
+        // Skip if all hours were allocated in special lab slots
+        if (hoursNeeded <= 0) continue;
         
         // Get the section and subject objects
         const section = sections.find(s => s.id === sectionId)!;
@@ -804,70 +902,145 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               // Skip if this slot is already filled
               if (newTimetable[sectionId][day][period] !== null) continue;
               
-              // Find an available teacher for this slot
-              const availableTeacher = eligibleTeachers.find((teacher) => 
-                // Check if teacher is available at this time slot (not assigned to any other section)
-                teacherTimeSlots[teacher.id][day][period] === true && 
-                // Check if teacher hasn't exceeded max hours
-                teacherAssignments[teacher.id] < teacher.maxHours
-              );
-              
-              if (availableTeacher) {
-                // Assign the teacher to this slot
-                newTimetable[sectionId][day][period] = {
-                  teacherId: availableTeacher.id,
-                  subjectId,
-                };
+              // For lab subjects, try to schedule them in consecutive periods if possible
+              if (type === "lab") {
+                // Labs typically need two consecutive periods
+                if (period < PERIODS_PER_DAY && newTimetable[sectionId][day][period + 1] === null) {
+                  // Find an available teacher for both slots
+                  const availableTeacher = eligibleTeachers.find((teacher) => 
+                    teacherTimeSlots[teacher.id][day][period] === true && 
+                    teacherTimeSlots[teacher.id][day][period + 1] === true &&
+                    teacherAssignments[teacher.id] + 2 <= teacher.maxHours
+                  );
+                  
+                  if (availableTeacher) {
+                    // Assign the teacher to both slots
+                    newTimetable[sectionId][day][period] = {
+                      teacherId: availableTeacher.id,
+                      subjectId,
+                      type: "lab",
+                      location
+                    };
+                    
+                    newTimetable[sectionId][day][period + 1] = {
+                      teacherId: availableTeacher.id,
+                      subjectId,
+                      type: "lab",
+                      location
+                    };
+                    
+                    // Mark teacher as busy for both slots
+                    teacherTimeSlots[availableTeacher.id][day][period] = false;
+                    teacherTimeSlots[availableTeacher.id][day][period + 1] = false;
+                    
+                    // Update teacher assignment count
+                    teacherAssignments[availableTeacher.id] += 2;
+                    
+                    // Update hours allocated and day allocations (counting as 2)
+                    hoursAllocated += 2;
+                    allocationsPerDay[day] += 2;
+                    allocated = true;
+                    break;
+                  }
+                }
+              } else {
+                // Regular lecture - find an available teacher
+                const availableTeacher = eligibleTeachers.find((teacher) => 
+                  teacherTimeSlots[teacher.id][day][period] === true && 
+                  teacherAssignments[teacher.id] < teacher.maxHours
+                );
                 
-                // Mark teacher as busy for this time slot across all sections
-                teacherTimeSlots[availableTeacher.id][day][period] = false;
-                
-                // Update teacher assignment count
-                teacherAssignments[availableTeacher.id]++;
-                
-                // Update hours allocated and day allocations
-                hoursAllocated++;
-                allocationsPerDay[day]++;
-                allocated = true;
-                break;
+                if (availableTeacher) {
+                  // Assign the teacher to this slot
+                  newTimetable[sectionId][day][period] = {
+                    teacherId: availableTeacher.id,
+                    subjectId,
+                    type: "lecture"
+                  };
+                  
+                  // Mark teacher as busy for this time slot
+                  teacherTimeSlots[availableTeacher.id][day][period] = false;
+                  
+                  // Update teacher assignment count
+                  teacherAssignments[availableTeacher.id]++;
+                  
+                  // Update hours allocated and day allocations
+                  hoursAllocated++;
+                  allocationsPerDay[day]++;
+                  allocated = true;
+                  break;
+                }
               }
             }
             
             if (allocated) break;
           }
           
-          // If we couldn't allocate in any day, relax the max periods per day constraint
-          if (!allocated) {
-            // If we've tried enough times without success, just try to fit anywhere
-            if (attempts > DAYS.length * 2) {
-              for (const day of DAYS) {
-                for (let period = 1; period <= PERIODS_PER_DAY; period++) {
-                  // Skip if this slot is already filled
-                  if (newTimetable[sectionId][day][period] !== null) continue;
+          // If we couldn't allocate in any day, relax constraints and try just one period for labs
+          if (!allocated && type === "lab") {
+            for (const day of daysByAllocation) {
+              for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+                // Skip if this slot is already filled
+                if (newTimetable[sectionId][day][period] !== null) continue;
+                
+                // Find any available teacher
+                const availableTeacher = eligibleTeachers.find((teacher) => 
+                  teacherTimeSlots[teacher.id][day][period] === true && 
+                  teacherAssignments[teacher.id] < teacher.maxHours
+                );
+                
+                if (availableTeacher) {
+                  // Assign the teacher to this slot
+                  newTimetable[sectionId][day][period] = {
+                    teacherId: availableTeacher.id,
+                    subjectId,
+                    type: "lab",
+                    location
+                  };
                   
-                  // Find any available teacher
-                  const availableTeacher = eligibleTeachers.find((teacher) => 
-                    teacherTimeSlots[teacher.id][day][period] === true && 
-                    teacherAssignments[teacher.id] < teacher.maxHours
-                  );
-                  
-                  if (availableTeacher) {
-                    // Assign the teacher to this slot
-                    newTimetable[sectionId][day][period] = {
-                      teacherId: availableTeacher.id,
-                      subjectId,
-                    };
-                    
-                    // Mark teacher as busy for this time slot
-                    teacherTimeSlots[availableTeacher.id][day][period] = false;
-                    teacherAssignments[availableTeacher.id]++;
-                    hoursAllocated++;
-                    allocated = true;
-                    break;
-                  }
+                  // Mark teacher as busy for this time slot
+                  teacherTimeSlots[availableTeacher.id][day][period] = false;
+                  teacherAssignments[availableTeacher.id]++;
+                  hoursAllocated++;
+                  allocationsPerDay[day]++;
+                  allocated = true;
+                  break;
                 }
-                if (allocated) break;
               }
+              if (allocated) break;
+            }
+          }
+          
+          // If we still couldn't allocate any slot for lectures, try to fit anywhere
+          if (!allocated && type === "lecture") {
+            for (const day of DAYS) {
+              for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+                // Skip if this slot is already filled
+                if (newTimetable[sectionId][day][period] !== null) continue;
+                
+                // Find any available teacher
+                const availableTeacher = eligibleTeachers.find((teacher) => 
+                  teacherTimeSlots[teacher.id][day][period] === true && 
+                  teacherAssignments[teacher.id] < teacher.maxHours
+                );
+                
+                if (availableTeacher) {
+                  // Assign the teacher to this slot
+                  newTimetable[sectionId][day][period] = {
+                    teacherId: availableTeacher.id,
+                    subjectId,
+                    type: "lecture"
+                  };
+                  
+                  // Mark teacher as busy for this time slot
+                  teacherTimeSlots[availableTeacher.id][day][period] = false;
+                  teacherAssignments[availableTeacher.id]++;
+                  hoursAllocated++;
+                  allocated = true;
+                  break;
+                }
+              }
+              if (allocated) break;
             }
           }
           

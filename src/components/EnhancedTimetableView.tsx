@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useData, DAYS } from "@/contexts/DataContext";
+import { useData, DAYS, LAB_LOCATIONS } from "@/contexts/DataContext";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -33,33 +33,16 @@ const PERIOD_MAPPING: Record<number, number> = {
   7: 9
 };
 
-// Lab data
-const LAB_DATA: Record<string, Record<number, string[]>> = {
-  "Monday": {
-    8: [
-      "S7- MPL [DBMS LAB A-420] [Dr. A. Shankhar]",
-      "S8 -DSAL [S/W LAB A-406] [SAN]",
-      "S9 - PBL[N/W LAB A-402] [PDT]"
-    ]
-  },
-  "Thursday": {
-    5: [
-      "S7- DSAL [S/W LAB A-406] [SAN]",
-      "S8 -PBL[PL-II LAB A-413] [PDT]",
-      "S9 - MPL [H/W LAB A-417] [Dr. A. Shankhar]"
-    ]
-  }
-};
-
 // Component for rendering timetable cell content
-const TimetableCell = ({ day, timeSlotId, selectedSection, timetable, getSubjectName, getTeacherName }:
+const TimetableCell = ({ day, timeSlotId, selectedSection, timetable, getSubjectName, getTeacherName, subjects }:
   {
     day: string,
     timeSlotId: number,
     selectedSection: string,
     timetable: any,
     getSubjectName: (subjectId: string) => string,
-    getTeacherName: (teacherId: string) => string
+    getTeacherName: (teacherId: string) => string,
+    subjects: any[]
   }) => {
   
   // Handle break slots
@@ -80,17 +63,32 @@ const TimetableCell = ({ day, timeSlotId, selectedSection, timetable, getSubject
   const slot = timetable[selectedSection]?.[day]?.[period];
   
   if (!slot) {
-    // Check for lab data
-    const labEntries = LAB_DATA[day as keyof typeof LAB_DATA]?.[timeSlotId as keyof typeof LAB_DATA[keyof typeof LAB_DATA]];
+    // Check for special lab sections (S7, S8, S9)
+    const isLabSection = ["s7", "s8", "s9"].includes(selectedSection);
     
-    if (labEntries && labEntries.length > 0) {
-      return (
-        <div className="p-1">
-          {labEntries.map((lab, index) => (
-            <div key={index} className="text-xs mb-1">{lab}</div>
-          ))}
-        </div>
-      );
+    // Special lab arrangements for S7, S8, S9 sections
+    // Monday 8th period and Thursday 5th period
+    if ((day === "Monday" && timeSlotId === 8) || (day === "Thursday" && timeSlotId === 5)) {
+      if (isLabSection) {
+        // Find the lab subject for this section
+        const labSubject = subjects.find(s => 
+          s.type === "lab" && 
+          s.sections.includes(selectedSection)
+        );
+        
+        if (labSubject) {
+          const teacher = subjects.find(s => s.id === labSubject.id)?.teacherId;
+          const teacherName = teacher ? getTeacherName(teacher) : "TBD";
+          
+          return (
+            <div className="p-1 bg-blue-50">
+              <div className="font-medium">{labSubject.name} LAB</div>
+              <div className="text-xs">[{labSubject.location}]</div>
+              <div className="text-xs text-gray-600">[{teacherName}]</div>
+            </div>
+          );
+        }
+      }
     }
     
     return null;
@@ -98,28 +96,36 @@ const TimetableCell = ({ day, timeSlotId, selectedSection, timetable, getSubject
   
   const subjectName = getSubjectName(slot.subjectId);
   const teacherName = getTeacherName(slot.teacherId);
+  const subjectType = slot.type || (subjects.find(s => s.id === slot.subjectId)?.type || "lecture");
+  const location = slot.location || subjects.find(s => s.id === slot.subjectId)?.location || "";
   
   return (
-    <div className="p-1">
-      <div className="font-medium">{subjectName}</div>
+    <div className={`p-1 ${subjectType === 'lab' ? 'bg-blue-50' : ''}`}>
+      <div className="font-medium">{subjectName} {subjectType === 'lab' ? 'LAB' : ''}</div>
+      {location && <div className="text-xs">[{location}]</div>}
       <div className="text-xs text-gray-600">[{teacherName}]</div>
     </div>
   );
 };
 
 // Header component for timetable
-const TimetableHeader = () => (
-  <div className="text-center py-4 border-b">
-    <h1 className="text-xl font-bold uppercase">K.J. College of Engineering & Management Research, Pune.</h1>
-    <h2 className="text-lg font-medium">DEPARTMENT OF COMPUTER ENGINEERING</h2>
-    <div className="flex justify-center items-center space-x-6 mt-2">
-      <p>Time Table Academic Year: 2024-2025</p>
-      <p>SEMESTER-II</p>
-      <p>Section: SE-B</p>
+const TimetableHeader = ({selectedSection, sections}: {selectedSection: string, sections: any[]}) => {
+  const section = sections.find(s => s.id === selectedSection);
+  const sectionName = section ? section.name : "Unknown";
+  
+  return (
+    <div className="text-center py-4 border-b">
+      <h1 className="text-xl font-bold uppercase">K.J. College of Engineering & Management Research, Pune.</h1>
+      <h2 className="text-lg font-medium">DEPARTMENT OF COMPUTER ENGINEERING</h2>
+      <div className="flex justify-center items-center space-x-6 mt-2">
+        <p>Time Table Academic Year: 2024-2025</p>
+        <p>SEMESTER-II</p>
+        <p>Section: {sectionName}</p>
+      </div>
+      <p className="mt-1">Class Room No: 13</p>
     </div>
-    <p className="mt-1">Class Room No: 13</p>
-  </div>
-);
+  );
+};
 
 const EnhancedTimetableView: React.FC = () => {
   const { sections, teachers, subjects, timetable, generateTimetable, resetTimetable, loading } = useData();
@@ -258,7 +264,7 @@ const EnhancedTimetableView: React.FC = () => {
       ) : hasSelectedSection ? (
         <div className="bg-white rounded-lg border shadow-sm overflow-auto print:shadow-none">
           <div className="min-w-[900px]">
-            <TimetableHeader />
+            <TimetableHeader selectedSection={selectedSection} sections={sections} />
             
             <Table>
               <TableHeader>
@@ -295,6 +301,7 @@ const EnhancedTimetableView: React.FC = () => {
                           timetable={timetable}
                           getSubjectName={getSubjectName}
                           getTeacherName={getTeacherName}
+                          subjects={subjects}
                         />
                       </TableCell>
                     ))}
