@@ -186,53 +186,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       console.error("Error fetching data:", error);
       toast({
         title: "Data fetch error",
-        description: "Using mockup mode for frontend testing.",
+        description: "Error loading data.",
         variant: "destructive",
       });
       
-      if (!ENABLE_MOCKUP) {
-        console.log("Falling back to mockup data after API failure");
-        
-        const mockTeachers: Teacher[] = [
-          { id: "t1", name: "Dr. A. Shankhar", subjects: ["s1", "s5"], maxHours: 30 },
-          { id: "t2", name: "Jane Doe", subjects: ["s2", "s3"], maxHours: 25 },
-          { id: "t3", name: "Bob Johnson", subjects: ["s1", "s4"], maxHours: 20 },
-          { id: "t4", name: "SAN", subjects: ["s6"], maxHours: 15 },
-          { id: "t5", name: "PDT", subjects: ["s7"], maxHours: 15 },
-        ];
-        setTeachers(mockTeachers);
-
-        const mockSubjects: Subject[] = [
-          { id: "s1", name: "Mathematics", sections: ["sec1"], hoursPerWeek: { "sec1": 5 }, type: "lecture" },
-          { id: "s2", name: "Physics", sections: ["sec1"], hoursPerWeek: { "sec1": 4 }, type: "lecture" },
-          { id: "s3", name: "Chemistry", sections: ["sec1"], hoursPerWeek: { "sec1": 4 }, type: "lecture" },
-          { id: "s4", name: "Biology", sections: ["sec1"], hoursPerWeek: { "sec1": 3 }, type: "lecture" },
-          { id: "s5", name: "MPL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "DBMS LAB A-420" },
-          { id: "s6", name: "DSAL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "S/W LAB A-406" },
-          { id: "s7", name: "PBL", sections: ["sec1"], hoursPerWeek: { "sec1": 2 }, type: "lab", location: "N/W LAB A-402" },
-        ];
-        setSubjects(mockSubjects);
-
-        const mockSections: Section[] = [
-          { id: "sec1", name: "Class 10-A" },
-          { id: "s7", name: "S7" },
-          { id: "s8", name: "S8" },
-          { id: "s9", name: "S9" },
-        ];
-        setSections(mockSections);
-
-        const mockTimetable: Timetable = {};
-        mockSections.forEach((section) => {
-          mockTimetable[section.id] = {};
-          DAYS.forEach((day) => {
-            mockTimetable[section.id][day] = {};
-            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
-              mockTimetable[section.id][day][period] = null;
-            }
-          });
-        });
-        setTimetable(mockTimetable);
-      }
+      setTeachers([]);
+      setSubjects([]);
+      setSections([]);
+      setTimetable({});
     } finally {
       setLoading(false);
     }
