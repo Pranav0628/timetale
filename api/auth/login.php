@@ -19,6 +19,19 @@ include_once '../config/database.php';
 $data = json_decode(file_get_contents("php://input"));
 
 if(!empty($data->email) && !empty($data->password)) {
+    // Check for admin credentials directly (for demo purposes)
+    if($data->email === "admin@timetale.com" && $data->password === "admin123") {
+        echo json_encode([
+            "success" => true,
+            "user" => [
+                "id" => "1",
+                "name" => "Admin User",
+                "role" => "admin"
+            ]
+        ]);
+        exit();
+    }
+    
     // Initialize database
     $database = new Database();
     $db = $database->getConnection();
