@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { useData, DAYS, PERIODS_PER_DAY } from "@/contexts/DataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const TimetableView: React.FC = () => {
@@ -12,6 +13,8 @@ const TimetableView: React.FC = () => {
     sections.length > 0 ? sections[0].id : undefined
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => {
     if (sections.length > 0 && !selectedSection) {
@@ -41,6 +44,29 @@ const TimetableView: React.FC = () => {
   const exportToPDF = () => {
     // In a real application, you would implement PDF export functionality here
     alert("PDF export functionality would be implemented here in a real application.");
+  };
+
+  // Function to get free teachers for a specific day and period
+  const getFreeTeachersForTimeSlot = (day: string, period: number) => {
+    const busyTeacherIds = new Set<string>();
+    
+    // Check all sections to find busy teachers
+    Object.values(timetable).forEach((sectionTimetable) => {
+      if (sectionTimetable[day] && sectionTimetable[day][period]) {
+        const slot = sectionTimetable[day][period];
+        if (slot && slot.teacherId) {
+          busyTeacherIds.add(slot.teacherId);
+        }
+      }
+    });
+    
+    // Return teachers who are not busy
+    return teachers.filter(teacher => !busyTeacherIds.has(teacher.id));
+  };
+
+  const handleSlotClick = (day: string, period: number) => {
+    setSelectedDay(day);
+    setSelectedPeriod(period);
   };
 
   if (loading) {
@@ -74,6 +100,11 @@ const TimetableView: React.FC = () => {
   subjects.forEach((subject, index) => {
     subjectColors[subject.id] = colors[index % colors.length];
   });
+
+  // Get free teachers for selected time slot
+  const freeTeachers = selectedDay && selectedPeriod !== null 
+    ? getFreeTeachersForTimeSlot(selectedDay, selectedPeriod) 
+    : [];
 
   return (
     <div className="space-y-6">
@@ -141,49 +172,92 @@ const TimetableView: React.FC = () => {
           </div>
 
           {hasSelectedSection ? (
-            <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
-              <div className="min-w-[800px]">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Period</th>
-                      {DAYS.map((day) => (
-                        <th key={day} className="px-4 py-3 text-left text-sm font-medium">
-                          {day}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: PERIODS_PER_DAY }, (_, period) => period + 1).map((period) => (
-                      <tr key={period} className="border-b last:border-0">
-                        <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
-                          {period}
-                        </td>
-                        {DAYS.map((day) => {
-                          const slot = timetable[selectedSection]?.[day]?.[period];
-                          
-                          return (
-                            <td key={day} className="px-4 py-2">
-                              {slot ? (
-                                <div className={`p-2 rounded-md ${subjectColors[slot.subjectId]} bg-opacity-15 border-l-4 ${subjectColors[slot.subjectId]}`}>
-                                  <div className="font-medium">{getSubjectName(slot.subjectId)}</div>
-                                  <div className="text-xs text-muted-foreground">{getTeacherName(slot.teacherId)}</div>
-                                </div>
-                              ) : (
-                                <div className="p-2 rounded-md border border-dashed text-center">
-                                  <span className="text-xs text-muted-foreground">Free</span>
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
+            <>
+              <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
+                <div className="min-w-[800px]">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Period</th>
+                        {DAYS.map((day) => (
+                          <th key={day} className="px-4 py-3 text-left text-sm font-medium">
+                            {day}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: PERIODS_PER_DAY }, (_, period) => period + 1).map((period) => (
+                        <tr key={period} className="border-b last:border-0">
+                          <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
+                            {period}
+                          </td>
+                          {DAYS.map((day) => {
+                            const slot = timetable[selectedSection]?.[day]?.[period];
+                            
+                            return (
+                              <td 
+                                key={day} 
+                                className="px-4 py-2 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSlotClick(day, period)}
+                              >
+                                {slot ? (
+                                  <div className={`p-2 rounded-md ${subjectColors[slot.subjectId]} bg-opacity-15 border-l-4 ${subjectColors[slot.subjectId]}`}>
+                                    <div className="font-medium">{getSubjectName(slot.subjectId)}</div>
+                                    <div className="text-xs text-muted-foreground">{getTeacherName(slot.teacherId)}</div>
+                                  </div>
+                                ) : (
+                                  <div className="p-2 rounded-md border border-dashed text-center">
+                                    <span className="text-xs text-muted-foreground">Free</span>
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+
+              {/* Free Faculty Members Panel */}
+              {selectedDay && selectedPeriod !== null && (
+                <Card className="mt-4">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-lg font-medium flex items-center">
+                      <Users className="mr-2 h-5 w-5" />
+                      Faculty Available on {selectedDay}, Period {selectedPeriod}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {freeTeachers.length > 0 ? (
+                      <ul className="divide-y">
+                        {freeTeachers.map(teacher => (
+                          <li key={teacher.id} className="py-2">
+                            <div className="flex items-center">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                                <span className="font-medium text-primary">{teacher.name.charAt(0)}</span>
+                              </div>
+                              <div>
+                                <p className="font-medium">{teacher.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {teacher.subjects.join(', ')}
+                                </p>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-muted-foreground">No faculty members are available during this time slot.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </>
           ) : (
             <Card>
               <CardContent className="pt-6">
