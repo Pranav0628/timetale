@@ -1,9 +1,9 @@
 
 import React from "react";
-import TimetableView from "@/components/TimetableView";
+import EnhancedTimetableView from "@/components/EnhancedTimetableView";
 
 const TimetablePage: React.FC = () => {
-  return <TimetableView />;
+  return <EnhancedTimetableView />;
 };
 
 export default TimetablePage;
