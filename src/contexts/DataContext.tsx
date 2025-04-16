@@ -169,16 +169,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const addTeacher = async (teacher: Omit<Teacher, "id">) => {
     setLoading(true);
     try {
-      if (ENABLE_MOCKUP) {
-        const newTeacher = { ...teacher, id: generateId() };
-        setTeachers(prev => [...prev, newTeacher]);
-        toast({
-          title: "Teacher added",
-          description: `${teacher.name} has been added successfully.`,
-        });
-        return;
-      }
-      
       const response = await fetch(`${API_URL}/teachers/create.php`, {
         method: "POST",
         headers: {
@@ -210,10 +200,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const updateTeacher = async (id: string, teacher: Partial<Teacher>) => {
     setLoading(true);
     try {
-      setTeachers(prevTeachers => prevTeachers.map((t) => (t.id === id ? { ...t, ...teacher } : t)));
+      setTeachers(teachers.map((t) => (t.id === id ? { ...t, ...teacher } : t)));
       toast({
         title: "Teacher updated",
-        description: `${teacher.name || "Teacher"} has been updated successfully.`,
+        description: `${teacher.name} has been updated successfully.`,
       });
     } catch (error) {
       console.error("Error updating teacher:", error);
@@ -230,7 +220,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const removeTeacher = async (id: string) => {
     setLoading(true);
     try {
-      setTeachers(prevTeachers => prevTeachers.filter((teacher) => teacher.id !== id));
+      setTeachers(teachers.filter((teacher) => teacher.id !== id));
       toast({
         title: "Teacher removed",
         description: "The teacher has been removed successfully.",
@@ -250,16 +240,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const addSubject = async (subject: Omit<Subject, "id">) => {
     setLoading(true);
     try {
-      if (ENABLE_MOCKUP) {
-        const newSubject = { ...subject, id: generateId() };
-        setSubjects(prev => [...prev, newSubject]);
-        toast({
-          title: "Subject added",
-          description: `${subject.name} has been added successfully.`,
-        });
-        return;
-      }
-      
       const response = await fetch(`${API_URL}/subjects/create.php`, {
         method: "POST",
         headers: {
@@ -291,10 +271,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const updateSubject = async (id: string, subject: Partial<Subject>) => {
     setLoading(true);
     try {
-      setSubjects(prevSubjects => prevSubjects.map((s) => (s.id === id ? { ...s, ...subject } : s)));
+      setSubjects(subjects.map((s) => (s.id === id ? { ...s, ...subject } : s)));
       toast({
         title: "Subject updated",
-        description: `${subject.name || "Subject"} has been updated successfully.`,
+        description: `${subject.name} has been updated successfully.`,
       });
     } catch (error) {
       console.error("Error updating subject:", error);
@@ -311,7 +291,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const removeSubject = async (id: string) => {
     setLoading(true);
     try {
-      setSubjects(prevSubjects => prevSubjects.filter((subject) => subject.id !== id));
+      setSubjects(subjects.filter((subject) => subject.id !== id));
       toast({
         title: "Subject removed",
         description: "The subject has been removed successfully.",
@@ -333,23 +313,28 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     try {
       console.log("Adding section in mock mode:", section);
       
-      const newSection = { ...section, id: generateId() };
-      console.log("Created new section:", newSection);
-      setSections(prevSections => [...prevSections, newSection]);
-      
-      toast({
-        title: "Section added",
-        description: `${section.name} has been added successfully.`,
-      });
-      
-      return newSection;
+      if (ENABLE_MOCKUP) {
+        const newSection = { ...section, id: generateId() };
+        console.log("Created new section:", newSection);
+        setSections(prevSections => [...prevSections, newSection]);
+      } else {
+        const response = await fetch(`${API_URL}/sections/create.php`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(section),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const newSection = { ...section, id: generateId() };
+        setSections([...sections, newSection]);
+      }
     } catch (error) {
       console.error("Error adding section:", error);
-      toast({
-        title: "Error adding section",
-        description: "Failed to add the section.",
-        variant: "destructive",
-      });
       throw error;
     } finally {
       setLoading(false);
