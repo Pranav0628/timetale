@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "./AuthContext";
 
 export interface Teacher {
@@ -121,12 +121,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       if (ENABLE_MOCKUP) {
         console.log("Using mockup mode with zero initial data");
         
-        // Set all data to empty arrays, as requested
         setTeachers([]);
         setSubjects([]);
         setSections([]);
         
-        // Initialize an empty timetable structure
         const emptyTimetable: Timetable = {};
         setTimetable(emptyTimetable);
         
@@ -202,12 +200,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const updateTeacher = async (id: string, teacher: Partial<Teacher>) => {
     setLoading(true);
     try {
-      // Optimistically update the state
       setTeachers(teachers.map((t) => (t.id === id ? { ...t, ...teacher } : t)));
-  
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-  
       toast({
         title: "Teacher updated",
         description: `${teacher.name} has been updated successfully.`,
@@ -318,29 +311,31 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const addSection = async (section: Omit<Section, "id">) => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/sections/create.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(section),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      console.log("Adding section in mock mode:", section);
+      
+      if (ENABLE_MOCKUP) {
+        const newSection = { ...section, id: generateId() };
+        console.log("Created new section:", newSection);
+        setSections(prevSections => [...prevSections, newSection]);
+      } else {
+        const response = await fetch(`${API_URL}/sections/create.php`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(section),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const newSection = { ...section, id: generateId() };
+        setSections([...sections, newSection]);
       }
-      const newSection = { ...section, id: generateId() };
-      setSections([...sections, newSection]);
-      toast({
-        title: "Section added",
-        description: `${section.name} has been added successfully.`,
-      });
     } catch (error) {
       console.error("Error adding section:", error);
-      toast({
-        title: "Error adding section",
-        description: "Failed to add the section.",
-        variant: "destructive",
-      });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -349,18 +344,16 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const updateSection = async (id: string, section: Partial<Section>) => {
     setLoading(true);
     try {
-      setSections(sections.map((s) => (s.id === id ? { ...s, ...section } : s)));
-      toast({
-        title: "Section updated",
-        description: `${section.name} has been updated successfully.`,
-      });
+      if (!ENABLE_MOCKUP) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      setSections(prevSections => 
+        prevSections.map((s) => (s.id === id ? { ...s, ...section } : s))
+      );
     } catch (error) {
       console.error("Error updating section:", error);
-      toast({
-        title: "Error updating section",
-        description: "Failed to update the section.",
-        variant: "destructive",
-      });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -369,18 +362,14 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const removeSection = async (id: string) => {
     setLoading(true);
     try {
-      setSections(sections.filter((section) => section.id !== id));
-      toast({
-        title: "Section removed",
-        description: "The section has been removed successfully.",
-      });
+      if (!ENABLE_MOCKUP) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      setSections(prevSections => prevSections.filter((section) => section.id !== id));
     } catch (error) {
       console.error("Error removing section:", error);
-      toast({
-        title: "Error removing section",
-        description: "Failed to remove the section.",
-        variant: "destructive",
-      });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -389,14 +378,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const generateTimetable = async () => {
     setLoading(true);
     try {
-      // Mock timetable generation logic
       const newTimetable: Timetable = {};
       sections.forEach((section) => {
         newTimetable[section.id] = {};
         DAYS.forEach((day) => {
           newTimetable[section.id][day] = {};
           for (let period = 1; period <= PERIODS_PER_DAY; period++) {
-            // Assign a random subject and teacher for each slot
             const availableSubjects = subjects.filter(subject => subject.sections.includes(section.id));
             if (availableSubjects.length > 0) {
               const randomSubject = availableSubjects[Math.floor(Math.random() * availableSubjects.length)];
