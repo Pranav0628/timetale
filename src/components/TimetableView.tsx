@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 const TimetableView: React.FC = () => {
   const { sections, teachers, subjects, timetable, generateTimetable, resetTimetable, loading } = useData();
+  const { toast } = useToast();
   const [selectedSection, setSelectedSection] = useState<string | undefined>(
     sections.length > 0 ? sections[0].id : undefined
   );
@@ -35,7 +37,21 @@ const TimetableView: React.FC = () => {
   const handleGenerateTimetable = async () => {
     setIsGenerating(true);
     try {
-      await generateTimetable();
+      const success = await generateTimetable();
+      
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Timetable generated successfully!"
+        });
+      }
+    } catch (error) {
+      console.error("Error in timetable generation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate timetable. Check console for details.",
+        variant: "destructive"
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -88,12 +104,12 @@ const TimetableView: React.FC = () => {
   const hasData = teachers.length > 0 && subjects.length > 0 && sections.length > 0;
   const hasSelectedSection = selectedSection && timetable[selectedSection];
   const colors = [
-    "bg-timetable-blue",
-    "bg-timetable-indigo",
-    "bg-timetable-purple",
-    "bg-timetable-pink",
-    "bg-timetable-orange",
-    "bg-timetable-green"
+    "bg-blue-100 border-blue-400",
+    "bg-indigo-100 border-indigo-400",
+    "bg-purple-100 border-purple-400",
+    "bg-pink-100 border-pink-400",
+    "bg-orange-100 border-orange-400",
+    "bg-green-100 border-green-400"
   ];
 
   const subjectColors: Record<string, string> = {};
@@ -106,6 +122,9 @@ const TimetableView: React.FC = () => {
     ? getFreeTeachersForTimeSlot(selectedDay, selectedPeriod) 
     : [];
 
+  console.log("Current timetable state:", { timetable, selectedSection, hasSelectedSection });
+  console.log("Data available:", { teachers, subjects, sections });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -116,7 +135,7 @@ const TimetableView: React.FC = () => {
             className="flex items-center gap-2"
             disabled={isGenerating || !hasData}
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
             {isGenerating ? "Generating..." : "Generate Timetable"}
           </Button>
           <Button 
@@ -193,7 +212,9 @@ const TimetableView: React.FC = () => {
                             {period}
                           </td>
                           {DAYS.map((day) => {
-                            const slot = timetable[selectedSection]?.[day]?.[period];
+                            const sectionTimetable = timetable[selectedSection] || {};
+                            const daySchedule = sectionTimetable[day] || {};
+                            const slot = daySchedule[period];
                             
                             return (
                               <td 
@@ -202,9 +223,12 @@ const TimetableView: React.FC = () => {
                                 onClick={() => handleSlotClick(day, period)}
                               >
                                 {slot ? (
-                                  <div className={`p-2 rounded-md ${subjectColors[slot.subjectId]} bg-opacity-15 border-l-4 ${subjectColors[slot.subjectId]}`}>
+                                  <div className={`p-2 rounded-md ${subjectColors[slot.subjectId]}`}>
                                     <div className="font-medium">{getSubjectName(slot.subjectId)}</div>
                                     <div className="text-xs text-muted-foreground">{getTeacherName(slot.teacherId)}</div>
+                                    {slot.type === 'lab' && slot.location && (
+                                      <div className="text-xs font-medium mt-1">{slot.location}</div>
+                                    )}
                                   </div>
                                 ) : (
                                   <div className="p-2 rounded-md border border-dashed text-center">
