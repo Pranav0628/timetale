@@ -1,48 +1,15 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "./AuthContext";
 
-export interface Teacher {
-  id: string;
-  name: string;
-  subjects: string[];
-  maxHours: number;
-}
+import React, { createContext, useContext, ReactNode } from "react";
+import { DataStateProvider, useDataState } from "./DataContextState";
+import { useTeacherService } from "@/services/teacherService";
+import { useSubjectService } from "@/services/subjectService";
+import { useSectionService } from "@/services/sectionService";
+import { useTimetableService } from "@/services/timetableService";
+import { Teacher, Subject, Section, TimeSlot, Timetable, DAYS, PERIODS_PER_DAY, LAB_LOCATIONS } from "@/types/timetable";
 
-export interface Subject {
-  id: string;
-  name: string;
-  sections: string[];
-  hoursPerWeek: Record<string, number>; // section -> hours per week
-  type: "lecture" | "lab"; // Added subject type
-  location?: string; // Optional location for labs
-}
-
-export interface Section {
-  id: string;
-  name: string;
-}
-
-export interface TimeSlot {
-  day: string;
-  period: number;
-  teacherId: string;
-  subjectId: string;
-  sectionId: string;
-}
-
-export interface Timetable {
-  [sectionId: string]: {
-    [day: string]: {
-      [period: number]: {
-        teacherId: string;
-        subjectId: string;
-        type?: "lecture" | "lab"; // Add type to the timetable slot
-        location?: string; // Add location to the timetable slot
-      } | null;
-    };
-  };
-}
+// Export types and constants from here so consumers don't need to import from multiple places
+export { DAYS, PERIODS_PER_DAY, LAB_LOCATIONS };
+export type { Teacher, Subject, Section, TimeSlot, Timetable };
 
 interface DataContextType {
   teachers: Teacher[];
@@ -74,474 +41,61 @@ export const useData = () => {
   return context;
 };
 
-const API_URL = "http://localhost/timetable/api";
-
-const ENABLE_MOCKUP = true;
-
-const generateId = () => Math.random().toString(36).substring(2, 9);
-
-export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-export const PERIODS_PER_DAY = 8;
-
-export const LAB_LOCATIONS = [
-  "DBMS LAB A-420",
-  "S/W LAB A-406",
-  "N/W LAB A-402",
-  "H/W LAB A-417",
-  "PL-II LAB A-413"
-];
-
 interface DataProviderProps {
   children: ReactNode;
 }
 
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
-  const [timetable, setTimetable] = useState<Timetable>({});
-  const [loading, setLoading] = useState<boolean>(true);
-  const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  // Wrap all the services together
+  const DataProviderWithServices: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // Get state from the DataStateProvider
+    const { 
+      teachers, 
+      subjects, 
+      sections, 
+      timetable, 
+      loading, 
+      fetchData 
+    } = useDataState();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    } else {
-      setTeachers([]);
-      setSubjects([]);
-      setSections([]);
-      setTimetable({});
-    }
-  }, [isAuthenticated]);
+    // Get service methods
+    const teacherService = useTeacherService();
+    const subjectService = useSubjectService();
+    const sectionService = useSectionService();
+    const timetableService = useTimetableService();
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      if (ENABLE_MOCKUP) {
-        console.log("Using mockup mode with zero initial data");
-        
-        setTeachers([]);
-        setSubjects([]);
-        setSections([]);
-        
-        const emptyTimetable: Timetable = {};
-        setTimetable(emptyTimetable);
-        
-        toast({
-          title: "Mock Mode Initialized",
-          description: "Starting with zero initial data",
-        });
-      } else {
-        const teachersResponse = await fetch(`${API_URL}/teachers/read.php`);
-        const teachersData = await teachersResponse.json();
-        setTeachers(teachersData);
-
-        const subjectsResponse = await fetch(`${API_URL}/subjects/read.php`);
-        const subjectsData = await subjectsResponse.json();
-        setSubjects(subjectsData);
-
-        const sectionsResponse = await fetch(`${API_URL}/sections/read.php`);
-        const sectionsData = await sectionsResponse.json();
-        setSections(sectionsData);
-
-        const timetableResponse = await fetch(`${API_URL}/timetable/get.php`);
-        const timetableData = await timetableResponse.json();
-        setTimetable(timetableData);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({
-        title: "Data fetch error",
-        description: "Error loading data.",
-        variant: "destructive",
-      });
-      
-      setTeachers([]);
-      setSubjects([]);
-      setSections([]);
-      setTimetable({});
-    } finally {
-      setLoading(false);
-    }
+    // Combine all in one context
+    return (
+      <DataContext.Provider
+        value={{
+          teachers,
+          subjects,
+          sections,
+          timetable,
+          loading,
+          addTeacher: teacherService.addTeacher,
+          updateTeacher: teacherService.updateTeacher,
+          removeTeacher: teacherService.removeTeacher,
+          addSubject: subjectService.addSubject,
+          updateSubject: subjectService.updateSubject,
+          removeSubject: subjectService.removeSubject,
+          addSection: sectionService.addSection,
+          updateSection: sectionService.updateSection,
+          removeSection: sectionService.removeSection,
+          generateTimetable: timetableService.generateTimetable,
+          resetTimetable: timetableService.resetTimetable,
+          fetchData,
+        }}
+      >
+        {children}
+      </DataContext.Provider>
+    );
   };
 
-  const addTeacher = async (teacher: Omit<Teacher, "id">) => {
-    setLoading(true);
-    try {
-      if (ENABLE_MOCKUP) {
-        const newTeacher = { ...teacher, id: generateId() };
-        setTeachers(prev => [...prev, newTeacher]);
-        toast({
-          title: "Teacher added",
-          description: `${teacher.name} has been added successfully.`,
-        });
-        return;
-      }
-      
-      const response = await fetch(`${API_URL}/teachers/create.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(teacher),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const newTeacher = { ...teacher, id: generateId() };
-      setTeachers([...teachers, newTeacher]);
-      toast({
-        title: "Teacher added",
-        description: `${teacher.name} has been added successfully.`,
-      });
-    } catch (error) {
-      console.error("Error adding teacher:", error);
-      toast({
-        title: "Error adding teacher",
-        description: "Failed to add the teacher.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateTeacher = async (id: string, teacher: Partial<Teacher>) => {
-    setLoading(true);
-    try {
-      setTeachers(prevTeachers => prevTeachers.map((t) => (t.id === id ? { ...t, ...teacher } : t)));
-      toast({
-        title: "Teacher updated",
-        description: `${teacher.name || "Teacher"} has been updated successfully.`,
-      });
-    } catch (error) {
-      console.error("Error updating teacher:", error);
-      toast({
-        title: "Error updating teacher",
-        description: "Failed to update the teacher.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeTeacher = async (id: string) => {
-    setLoading(true);
-    try {
-      setTeachers(prevTeachers => prevTeachers.filter((teacher) => teacher.id !== id));
-      toast({
-        title: "Teacher removed",
-        description: "The teacher has been removed successfully.",
-      });
-    } catch (error) {
-      console.error("Error removing teacher:", error);
-      toast({
-        title: "Error removing teacher",
-        description: "Failed to remove the teacher.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addSubject = async (subject: Omit<Subject, "id">) => {
-    setLoading(true);
-    try {
-      if (ENABLE_MOCKUP) {
-        const newSubject = { ...subject, id: generateId() };
-        setSubjects(prev => [...prev, newSubject]);
-        toast({
-          title: "Subject added",
-          description: `${subject.name} has been added successfully.`,
-        });
-        return;
-      }
-      
-      const response = await fetch(`${API_URL}/subjects/create.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(subject),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const newSubject = { ...subject, id: generateId() };
-      setSubjects([...subjects, newSubject]);
-      toast({
-        title: "Subject added",
-        description: `${subject.name} has been added successfully.`,
-      });
-    } catch (error) {
-      console.error("Error adding subject:", error);
-      toast({
-        title: "Error adding subject",
-        description: "Failed to add the subject.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateSubject = async (id: string, subject: Partial<Subject>) => {
-    setLoading(true);
-    try {
-      setSubjects(prevSubjects => prevSubjects.map((s) => (s.id === id ? { ...s, ...subject } : s)));
-      toast({
-        title: "Subject updated",
-        description: `${subject.name || "Subject"} has been updated successfully.`,
-      });
-    } catch (error) {
-      console.error("Error updating subject:", error);
-      toast({
-        title: "Error updating subject",
-        description: "Failed to update the subject.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeSubject = async (id: string) => {
-    setLoading(true);
-    try {
-      setSubjects(prevSubjects => prevSubjects.filter((subject) => subject.id !== id));
-      toast({
-        title: "Subject removed",
-        description: "The subject has been removed successfully.",
-      });
-    } catch (error) {
-      console.error("Error removing subject:", error);
-      toast({
-        title: "Error removing subject",
-        description: "Failed to remove the subject.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addSection = async (section: Omit<Section, "id">) => {
-    setLoading(true);
-    try {
-      console.log("Adding section in mock mode:", section);
-      
-      const newSection = { ...section, id: generateId() };
-      console.log("Created new section:", newSection);
-      setSections(prevSections => [...prevSections, newSection]);
-      
-      toast({
-        title: "Section added",
-        description: `${section.name} has been added successfully.`,
-      });
-      
-      return;
-    } catch (error) {
-      console.error("Error adding section:", error);
-      toast({
-        title: "Error adding section",
-        description: "Failed to add the section.",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateSection = async (id: string, section: Partial<Section>) => {
-    setLoading(true);
-    try {
-      if (!ENABLE_MOCKUP) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      setSections(prevSections => 
-        prevSections.map((s) => (s.id === id ? { ...s, ...section } : s))
-      );
-    } catch (error) {
-      console.error("Error updating section:", error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeSection = async (id: string) => {
-    setLoading(true);
-    try {
-      if (!ENABLE_MOCKUP) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      setSections(prevSections => prevSections.filter((section) => section.id !== id));
-    } catch (error) {
-      console.error("Error removing section:", error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateTimetable = async () => {
-    setLoading(true);
-    try {
-      if (sections.length === 0) {
-        toast({
-          title: "Error",
-          description: "Please add at least one section before generating a timetable.",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      if (subjects.length === 0) {
-        toast({
-          title: "Error",
-          description: "Please add at least one subject before generating a timetable.",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      if (teachers.length === 0) {
-        toast({
-          title: "Error",
-          description: "Please add at least one teacher before generating a timetable.",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      console.log("Generating timetable with:", { sections, subjects, teachers });
-      
-      const newTimetable: Timetable = {};
-      
-      sections.forEach((section) => {
-        newTimetable[section.id] = {};
-        DAYS.forEach((day) => {
-          newTimetable[section.id][day] = {};
-        });
-      });
-      
-      sections.forEach((section) => {
-        DAYS.forEach((day) => {
-          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
-            const availableSubjects = subjects.filter(subject => 
-              subject.sections.includes(section.id)
-            );
-            
-            if (availableSubjects.length > 0) {
-              const randomSubject = availableSubjects[Math.floor(Math.random() * availableSubjects.length)];
-              
-              const availableTeachers = teachers.filter(teacher => 
-                teacher.subjects.includes(randomSubject.name)
-              );
-              
-              if (availableTeachers.length > 0) {
-                const randomTeacher = availableTeachers[Math.floor(Math.random() * availableTeachers.length)];
-                
-                newTimetable[section.id][day][period] = {
-                  teacherId: randomTeacher.id,
-                  subjectId: randomSubject.id,
-                  type: randomSubject.type,
-                  location: randomSubject.type === 'lab' ? randomSubject.location : undefined
-                };
-                
-                console.log(`Assigned ${randomSubject.name} taught by ${randomTeacher.name} to ${section.name} on ${day} period ${period}`);
-              } else {
-                console.log(`No teachers available for ${randomSubject.name} on ${day} period ${period}`);
-                newTimetable[section.id][day][period] = null;
-              }
-            } else {
-              console.log(`No subjects available for section ${section.name}`);
-              newTimetable[section.id][day][period] = null;
-            }
-          }
-        });
-      });
-      
-      console.log("Generated timetable:", newTimetable);
-      setTimetable(newTimetable);
-      
-      toast({
-        title: "Timetable generated",
-        description: "A new timetable has been generated successfully.",
-      });
-      return true;
-    } catch (error) {
-      console.error("Error generating timetable:", error);
-      toast({
-        title: "Error generating timetable",
-        description: "Failed to generate the timetable.",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetTimetable = async () => {
-    setLoading(true);
-    try {
-      const emptyTimetable: Timetable = {};
-      sections.forEach((section) => {
-        emptyTimetable[section.id] = {};
-        DAYS.forEach((day) => {
-          emptyTimetable[section.id][day] = {};
-          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
-            emptyTimetable[section.id][day][period] = null;
-          }
-        });
-      });
-      setTimetable(emptyTimetable);
-      toast({
-        title: "Timetable reset",
-        description: "The timetable has been reset to its initial state.",
-      });
-    } catch (error) {
-      console.error("Error resetting timetable:", error);
-      toast({
-        title: "Error resetting timetable",
-        description: "Failed to reset the timetable.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Wrap the services provider with the state provider
   return (
-    <DataContext.Provider
-      value={{
-        teachers,
-        subjects,
-        sections,
-        timetable,
-        loading,
-        addTeacher,
-        updateTeacher,
-        removeTeacher,
-        addSubject,
-        updateSubject,
-        removeSubject,
-        addSection,
-        updateSection,
-        removeSection,
-        generateTimetable,
-        resetTimetable,
-        fetchData,
-      }}
-    >
-      {children}
-    </DataContext.Provider>
+    <DataStateProvider>
+      <DataProviderWithServices>{children}</DataProviderWithServices>
+    </DataStateProvider>
   );
 };
