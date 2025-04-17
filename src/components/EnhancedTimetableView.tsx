@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useData, DAYS, PERIODS_PER_DAY, TIME_SLOTS } from "@/contexts/DataContext";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Download, RefreshCw, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
+
+// Define the period mapping here to resolve the error
+const PERIOD_MAPPING: Record<string, number> = {
+  "1": 1,
+  "2": 2,
+  "3": 4,
+  "4": 5,
+  "5": 7,
+  "6": 8,
+  "7": 9
+};
 
 const TeacherAvailabilityTable = ({ teacherTimeSlots, teachers, selectedSection }: any) => {
   if (!teacherTimeSlots || !selectedSection) return null;
@@ -59,6 +70,13 @@ const EnhancedTimetableView: React.FC = () => {
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const [teacherTimeSlots, setTeacherTimeSlots] = useState<any>(null);
+
+  // Update selected section when sections change
+  useEffect(() => {
+    if (sections.length > 0 && !selectedSection) {
+      setSelectedSection(sections[0].id);
+    }
+  }, [sections, selectedSection]);
 
   const getTeacherName = (teacherId: string) => {
     const teacher = teachers.find((t) => t.id === teacherId);
@@ -207,7 +225,7 @@ const EnhancedTimetableView: React.FC = () => {
 
           {hasSelectedSection ? (
             <>
-              <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
+              <div className="bg-white rounded-lg border shadow-sm overflow-x-auto timetable-container">
                 <div className="min-w-[900px]">
                   <div className="text-center py-4 border-b">
                     <h1 className="text-xl font-bold uppercase">K.J. College of Engineering & Management Research, Pune.</h1>

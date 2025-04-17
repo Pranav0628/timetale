@@ -137,13 +137,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         setTeachers([]);
         setSubjects([]);
         setSections([]);
-        
-        const emptyTimetable: Timetable = {};
-        setTimetable(emptyTimetable);
+        setTimetable({});
         
         toast({
-          title: "Mock data cleared",
-          description: "No sample data is currently available",
+          title: "Mock data mode",
+          description: "Add teachers, subjects, and sections to generate a timetable",
         });
       } else {
         const teachersResponse = await fetch(`${API_URL}/teachers/read.php`);
@@ -909,14 +907,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
       setTimetable(newTimetable);
       
-      if (!ENABLE_MOCKUP) {
-        await saveTimetable(newTimetable);
-      } else {
-        toast({
-          title: "Timetable generated successfully (Mock Mode)",
-          description: "The timetable has been created",
-        });
-      }
+      toast({
+        title: "Timetable generated successfully",
+        description: "The timetable has been created",
+      });
       
       return true;
     } catch (error) {
