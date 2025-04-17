@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData, Section } from "@/contexts/DataContext";
-import { useToast } from "@/hooks/use-toast";
 
 interface SectionFormProps {
   section?: Section;
@@ -15,7 +14,6 @@ interface SectionFormProps {
 
 const SectionForm: React.FC<SectionFormProps> = ({ section, onSubmit, onCancel }) => {
   const { addSection, updateSection } = useData();
-  const { toast } = useToast();
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,25 +29,17 @@ const SectionForm: React.FC<SectionFormProps> = ({ section, onSubmit, onCancel }
     setIsSubmitting(true);
     
     try {
+      const sectionData = {
+        name,
+      };
+      
       if (section) {
-        await updateSection(section.id, { name });
+        updateSection(section.id, sectionData);
       } else {
-        await addSection({ name });
+        addSection(sectionData);
       }
       
-      toast({
-        title: section ? "Section updated" : "Section added",
-        description: `${name} has been ${section ? "updated" : "added"} successfully.`,
-      });
-      
       onSubmit();
-    } catch (error) {
-      console.error("Error saving section:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${section ? "update" : "add"} section.`,
-        variant: "destructive",
-      });
     } finally {
       setIsSubmitting(false);
     }

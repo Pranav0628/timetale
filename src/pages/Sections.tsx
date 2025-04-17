@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useData } from "@/contexts/DataContext";
 import SectionForm from "@/components/SectionForm";
 import { Edit, Plus, Trash2 } from "lucide-react";
@@ -52,14 +52,10 @@ const Sections: React.FC = () => {
     setIsDeleteOpen(true);
   };
 
-  const confirmDeleteSection = async () => {
+  const confirmDeleteSection = () => {
     if (selectedSection) {
-      try {
-        await removeSection(selectedSection);
-        setIsDeleteOpen(false);
-      } catch (error) {
-        console.error("Error deleting section:", error);
-      }
+      removeSection(selectedSection);
+      setIsDeleteOpen(false);
     }
   };
 
@@ -75,10 +71,6 @@ const Sections: React.FC = () => {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
-            <DialogTitle>Add New Section</DialogTitle>
-            <DialogDescription>
-              Create a new section for your timetable.
-            </DialogDescription>
             <SectionForm 
               onSubmit={() => setIsAddOpen(false)} 
               onCancel={() => setIsAddOpen(false)} 
@@ -154,10 +146,6 @@ const Sections: React.FC = () => {
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogTitle>Edit Section</DialogTitle>
-          <DialogDescription>
-            Update the section information.
-          </DialogDescription>
           {selectedSection && (
             <SectionForm 
               section={getSectionById(selectedSection)!}
