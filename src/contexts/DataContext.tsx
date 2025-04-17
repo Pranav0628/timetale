@@ -23,11 +23,11 @@ export interface Section {
 }
 
 export interface TimeSlot {
-  day: string;
-  period: number;
-  teacherId: string;
-  subjectId: string;
-  sectionId: string;
+  id: number;
+  startTime: string;
+  endTime: string;
+  type: "regular" | "break";
+  label?: string;
 }
 
 export interface Timetable {
@@ -81,6 +81,28 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 export const PERIODS_PER_DAY = 8;
+
+export const TIME_SLOTS = [
+  { id: 1, startTime: "8:45", endTime: "9:45", type: "regular" as const },
+  { id: 2, startTime: "9:45", endTime: "10:45", type: "regular" as const },
+  { id: 3, startTime: "10:45", endTime: "11:00", type: "break" as const, label: "SHORT RECESS" },
+  { id: 4, startTime: "11:00", endTime: "12:00", type: "regular" as const },
+  { id: 5, startTime: "12:00", endTime: "1:00", type: "regular" as const },
+  { id: 6, startTime: "1:00", endTime: "1:45", type: "break" as const, label: "LUNCH BREAK" },
+  { id: 7, startTime: "1:45", endTime: "2:45", type: "regular" as const },
+  { id: 8, startTime: "2:45", endTime: "3:45", type: "regular" as const },
+  { id: 9, startTime: "3:45", endTime: "4:30", type: "regular" as const },
+];
+
+export const PERIOD_MAPPING: Record<number, number> = {
+  1: 1,
+  2: 2,
+  3: 4,
+  4: 5,
+  5: 7,
+  6: 8,
+  7: 9
+};
 
 export const LAB_LOCATIONS = [
   "DBMS LAB A-420",
