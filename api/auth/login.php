@@ -12,15 +12,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Database connection
-include_once '../config/database.php';
-
-// Get posted data
-$data = json_decode(file_get_contents("php://input"));
-
-if(!empty($data->email) && !empty($data->password)) {
+try {
+    // Database connection
+    require_once '../config/database.php';
+    
+    // Get posted data
+    $data = json_decode(file_get_contents("php://input"));
+    
+    if (empty($data->email) || empty($data->password)) {
+        throw new Exception("Email and password are required.");
+    }
+    
     // Check for admin credentials directly (for demo purposes)
-    if($data->email === "admin@timetale.com" && $data->password === "admin123") {
+    if ($data->email === "admin@timetale.com" && $data->password === "admin123") {
         echo json_encode([
             "success" => true,
             "user" => [
@@ -52,7 +56,7 @@ if(!empty($data->email) && !empty($data->password)) {
     // Get user data
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if($user && password_verify($data->password, $user['password'])) {
+    if ($user && password_verify($data->password, $user['password'])) {
         // User exists and password matches
         echo json_encode([
             "success" => true,
@@ -64,16 +68,18 @@ if(!empty($data->email) && !empty($data->password)) {
         ]);
     } else {
         // User doesn't exist or password doesn't match
+        http_response_code(401);
         echo json_encode([
             "success" => false,
             "message" => "Invalid email or password."
         ]);
     }
-} else {
-    // Data is incomplete
+} catch (Exception $e) {
+    error_log("Login error: " . $e->getMessage());
+    http_response_code(500);
     echo json_encode([
         "success" => false,
-        "message" => "Email and password are required."
+        "message" => $e->getMessage()
     ]);
 }
 ?>

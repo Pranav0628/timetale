@@ -32,8 +32,8 @@ interface AuthProviderProps {
 // API base URL - update this to your PHP API endpoint
 const API_URL = "http://localhost/timetable/api";
 
-// Enable this for frontend testing without a backend
-const ENABLE_MOCKUP = true; // Changed to true to enable mockup mode
+// Enable this for frontend testing without a backend - set to false to use real API
+const ENABLE_MOCKUP = false; // Changed to false to use real API
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -90,53 +90,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Regular mode - connects to actual backend
       // Check server availability first
-      const timeout = 5000; // 5 seconds timeout
+      const timeout = 10000; // 10 seconds timeout
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      const response = await fetch(`${API_URL}/auth/login.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-        signal: controller.signal
-      }).finally(() => {
+      try {
+        const response = await fetch(`${API_URL}/auth/login.php`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal
+        });
+        
         clearTimeout(timeoutId);
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Login response:", data);
-      
-      if (data.success && data.user) {
-        const userData = {
-          id: data.user.id,
-          name: data.user.name,
-          role: data.user.role,
-        };
         
-        setUser(userData);
-        localStorage.setItem("timetale-user", JSON.stringify(userData));
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
         
-        toast({
-          title: "Login successful",
-          description: `Welcome back, ${userData.name}!`,
-        });
+        const data = await response.json();
+        console.log("Login response:", data);
         
-        return true;
-      } else {
-        toast({
-          title: "Login failed",
-          description: data.message || "Invalid email or password",
-          variant: "destructive",
-        });
-        
-        return false;
+        if (data.success && data.user) {
+          const userData = {
+            id: data.user.id,
+            name: data.user.name,
+            role: data.user.role,
+          };
+          
+          setUser(userData);
+          localStorage.setItem("timetale-user", JSON.stringify(userData));
+          
+          toast({
+            title: "Login successful",
+            description: `Welcome back, ${userData.name}!`,
+          });
+          
+          return true;
+        } else {
+          toast({
+            title: "Login failed",
+            description: data.message || "Invalid email or password",
+            variant: "destructive",
+          });
+          
+          return false;
+        }
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -151,12 +156,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           toast({
             title: "Connection failed",
-            description: "Could not connect to the server. Please ensure it's running and accessible.",
+            description: error.message || "Could not connect to the server. Please ensure it's running and accessible.",
             variant: "destructive",
           });
         }
       }
-      throw error; // Rethrow to be caught by the login form component
+      throw error;
     }
   };
 

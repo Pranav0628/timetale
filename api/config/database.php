@@ -14,8 +14,13 @@ class Database {
             // If connection exists and is still alive, reuse it
             if (self::$conn !== null) {
                 // Check if connection is still alive
-                if (self::$conn->query('SELECT 1')) {
-                    return self::$conn;
+                try {
+                    if (self::$conn->query('SELECT 1')) {
+                        return self::$conn;
+                    }
+                } catch (PDOException $e) {
+                    // Connection is dead, create new one
+                    self::$conn = null;
                 }
             }
             
@@ -34,8 +39,8 @@ class Database {
             
             return self::$conn;
         } catch(PDOException $exception) {
-            error_log("Connection error: " . $exception->getMessage());
-            throw new Exception("Database connection failed. Please try again later.");
+            error_log("Database connection error: " . $exception->getMessage());
+            throw new Exception("Database connection failed: " . $exception->getMessage());
         }
     }
 }
