@@ -12,39 +12,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Database connection
-include_once '../config/database.php';
-
-// Initialize database
-$database = new Database();
-$db = $database->getConnection();
-
-// Get timetable data
-$query = "SELECT * FROM timetable";
-$stmt = $db->prepare($query);
-$stmt->execute();
-
-$timetable = [];
-
-while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $sectionId = $row['section_id'];
-    $day = $row['day'];
-    $period = $row['period'];
+try {
+    // Database connection
+    require_once '../config/database.php';
     
-    if(!isset($timetable[$sectionId])) {
-        $timetable[$sectionId] = [];
+    // Initialize database
+    $database = new Database();
+    $db = $database->getConnection();
+    
+    // Get timetable data with transaction for consistency
+    $db->beginTransaction();
+    
+    try {
+        $query = "SELECT t.*, 
+                        s.type as subject_type,
+                        s.location as subject_location
+                 FROM timetable t
+                 LEFT JOIN subjects s ON t.subject_id = s.id
+                 ORDER BY t.section_id, t.day, t.period";
+                 
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        
+        $timetable = [];
+        
+        while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $sectionId = $row['section_id'];
+            $day = $row['day'];
+            $period = $row['period'];
+            
+            if(!isset($timetable[$sectionId])) {
+                $timetable[$sectionId] = [];
+            }
+            
+            if(!isset($timetable[$sectionId][$day])) {
+                $timetable[$sectionId][$day] = [];
+            }
+            
+            $timetable[$sectionId][$day][$period] = [
+                "teacherId" => $row['teacher_id'],
+                "subjectId" => $row['subject_id'],
+                "type" => $row['subject_type'] ?? 'lecture',
+                "location" => $row['subject_location']
+            ];
+        }
+        
+        $db->commit();
+        
+        // Return success response
+        echo json_encode([
+            "success" => true,
+            "data" => $timetable,
+            "message" => "Timetable retrieved successfully"
+        ]);
+        
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
     }
-    
-    if(!isset($timetable[$sectionId][$day])) {
-        $timetable[$sectionId][$day] = [];
-    }
-    
-    $timetable[$sectionId][$day][$period] = [
-        "teacherId" => $row['teacher_id'],
-        "subjectId" => $row['subject_id']
-    ];
+} catch (Exception $e) {
+    error_log("Error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "message" => "An error occurred while retrieving the timetable"
+    ]);
 }
-
-// Return timetable as JSON
-echo json_encode($timetable);
 ?>

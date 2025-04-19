@@ -12,62 +12,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Database connection
-include_once '../config/database.php';
-
-// Get posted data
-$data = json_decode(file_get_contents("php://input"));
-
-if(!empty($data->timetable)) {
+try {
+    // Get posted data
+    $data = json_decode(file_get_contents("php://input"));
+    
+    if(empty($data->timetable)) {
+        throw new Exception("No timetable data provided");
+    }
+    
+    // Database connection
+    require_once '../config/database.php';
+    
     // Initialize database
     $database = new Database();
     $db = $database->getConnection();
     
-    // First clear existing timetable
-    $query = "DELETE FROM timetable";
-    $stmt = $db->prepare($query);
-    $stmt->execute();
+    // Start transaction
+    $db->beginTransaction();
     
-    // Insert new timetable data
-    $success = true;
-    
-    foreach($data->timetable as $sectionId => $days) {
-        foreach($days as $day => $periods) {
-            foreach($periods as $period => $slot) {
-                if($slot) {
-                    $query = "INSERT INTO timetable (section_id, day, period, teacher_id, subject_id) 
-                             VALUES (?, ?, ?, ?, ?)";
-                    $stmt = $db->prepare($query);
-                    
-                    $stmt->bindParam(1, $sectionId);
-                    $stmt->bindParam(2, $day);
-                    $stmt->bindParam(3, $period);
-                    $stmt->bindParam(4, $slot->teacherId);
-                    $stmt->bindParam(5, $slot->subjectId);
-                    
-                    if(!$stmt->execute()) {
-                        $success = false;
+    try {
+        // First clear existing timetable
+        $query = "DELETE FROM timetable";
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        
+        // Prepare insert statement
+        $query = "INSERT INTO timetable (section_id, day, period, teacher_id, subject_id, created_at) 
+                 VALUES (?, ?, ?, ?, ?, NOW())";
+        $stmt = $db->prepare($query);
+        
+        // Insert new timetable data
+        foreach($data->timetable as $sectionId => $days) {
+            foreach($days as $day => $periods) {
+                foreach($periods as $period => $slot) {
+                    if($slot) {
+                        $stmt->execute([
+                            $sectionId,
+                            $day,
+                            $period,
+                            $slot->teacherId,
+                            $slot->subjectId
+                        ]);
                     }
                 }
             }
         }
-    }
-    
-    if($success) {
+        
+        // Commit transaction
+        $db->commit();
+        
         echo json_encode([
             "success" => true,
-            "message" => "Timetable saved successfully."
+            "message" => "Timetable saved successfully"
         ]);
-    } else {
-        echo json_encode([
-            "success" => false,
-            "message" => "Error saving timetable."
-        ]);
+        
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
     }
-} else {
+} catch (Exception $e) {
+    error_log("Error: " . $e->getMessage());
+    http_response_code(500);
     echo json_encode([
         "success" => false,
-        "message" => "No timetable data provided."
+        "message" => "An error occurred while saving the timetable"
     ]);
 }
 ?>
