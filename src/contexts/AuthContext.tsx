@@ -29,17 +29,13 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// API base URL - update this to your PHP API endpoint
 const API_URL = "http://localhost/timetable/api";
-
-// Enable this for frontend testing without a backend - set to false to use real API
-const ENABLE_MOCKUP = false; // Changed to false to use real API
+const ENABLE_MOCKUP = true; // Keep mock mode enabled
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
   
-  // Check for saved auth on mount
   useEffect(() => {
     const savedUser = localStorage.getItem("timetale-user");
     if (savedUser) {
@@ -56,42 +52,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log("Attempting to login with API URL:", API_URL);
       
-      // Mockup mode for frontend testing without backend
-      if (ENABLE_MOCKUP) {
-        console.log("Using mockup login mode");
+      // Try mock login first if enabled
+      if (ENABLE_MOCKUP && email === "admin@timetale.com" && password === "admin123") {
+        console.log("Mock login successful");
+        const userData = {
+          id: "1",
+          name: "Admin User",
+          role: "admin",
+        };
         
-        // Demo credentials check
-        if (email === "admin@timetale.com" && password === "admin123") {
-          const userData = {
-            id: "1",
-            name: "Admin User",
-            role: "admin",
-          };
-          
-          setUser(userData);
-          localStorage.setItem("timetale-user", JSON.stringify(userData));
-          
-          toast({
-            title: "Login successful (Mock Mode)",
-            description: `Welcome back, ${userData.name}!`,
-          });
-          
-          return true;
-        } else {
-          toast({
-            title: "Login failed",
-            description: "Invalid email or password",
-            variant: "destructive",
-          });
-          
-          return false;
-        }
+        setUser(userData);
+        localStorage.setItem("timetale-user", JSON.stringify(userData));
+        
+        toast({
+          title: "Login successful (Mock Mode)",
+          description: `Welcome back, ${userData.name}!`,
+        });
+        
+        return true;
       }
       
-      // Regular mode - connects to actual backend
-      // Check server availability first
-      const timeout = 10000; // 10 seconds timeout
-      
+      // If not mock credentials, try real database login
+      const timeout = 10000;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       
@@ -147,21 +129,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error("Login error:", error);
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          console.error("Request timeout - server might be down");
           toast({
             title: "Connection timeout",
-            description: "The server is not responding. Please check your server configuration.",
+            description: "The server is not responding. Please try again.",
             variant: "destructive",
           });
         } else {
           toast({
             title: "Connection failed",
-            description: error.message || "Could not connect to the server. Please ensure it's running and accessible.",
+            description: "Could not connect to the server. Please try again later.",
             variant: "destructive",
           });
         }
       }
-      throw error;
+      return false;
     }
   };
 
@@ -180,3 +161,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
