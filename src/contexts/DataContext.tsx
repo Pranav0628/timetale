@@ -229,7 +229,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           emptyTimetable[section.id] = {};
           DAYS.forEach((day) => {
             emptyTimetable[section.id][day] = {};
-            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+            for (let period = 1; period <= 7; period++) {
               emptyTimetable[section.id][day][period] = null;
             }
           });
@@ -544,7 +544,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         newTimetable[newId] = {};
         DAYS.forEach((day) => {
           newTimetable[newId][day] = {};
-          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+          for (let period = 1; period <= 7; period++) {
             newTimetable[newId][day][period] = null;
           }
         });
@@ -714,7 +714,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         newTimetable[section.id] = {};
         DAYS.forEach((day) => {
           newTimetable[section.id][day] = {};
-          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+          for (let period = 1; period <= 7; period++) {
             newTimetable[section.id][day][period] = null;
           }
         });
@@ -732,7 +732,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         teacherTimeSlots[teacher.id] = {};
         DAYS.forEach((day) => {
           teacherTimeSlots[teacher.id][day] = {};
-          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+          for (let period = 1; period <= 7; period++) {
             teacherTimeSlots[teacher.id][day][period] = true;
           }
         });
@@ -949,3 +949,5 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
                 );
                 
                 if (availableTeacher) {
+
+...

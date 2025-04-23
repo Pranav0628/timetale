@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from "react";
-import { useData, DAYS, PERIODS_PER_DAY } from "@/contexts/DataContext";
+import { useData, DAYS } from "@/contexts/DataContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";

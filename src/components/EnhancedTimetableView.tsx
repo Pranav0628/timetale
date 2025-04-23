@@ -1,23 +1,11 @@
-
 import React, { useState, useEffect } from "react";
-import { useData, DAYS, PERIODS_PER_DAY, TIME_SLOTS } from "@/contexts/DataContext";
+import { useData, DAYS, PERIODS_PER_DAY, TIME_SLOTS, PERIOD_MAPPING } from "@/contexts/DataContext";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw, Printer } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
-
-// Define the period mapping here to resolve the error
-const PERIOD_MAPPING: Record<string, number> = {
-  "1": 1,
-  "2": 2,
-  "3": 4,
-  "4": 5,
-  "5": 7,
-  "6": 8,
-  "7": 9
-};
 
 const TeacherAvailabilityTable = ({ teacherTimeSlots, teachers, selectedSection }: any) => {
   if (!teacherTimeSlots || !selectedSection) return null;
@@ -42,7 +30,7 @@ const TeacherAvailabilityTable = ({ teacherTimeSlots, teachers, selectedSection 
                 {DAYS.map((day) => (
                   <TableCell key={day} className="p-2">
                     <div className="text-xs">
-                      {Array.from({ length: PERIODS_PER_DAY }, (_, period) => period + 1).map((period) => (
+                      {Array.from({ length: 7 }, (_, i) => i + 1).map((period) => (
                         <span 
                           key={period}
                           className={`inline-block w-6 h-6 m-0.5 rounded-sm text-center leading-6 
@@ -71,7 +59,6 @@ const EnhancedTimetableView: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [teacherTimeSlots, setTeacherTimeSlots] = useState<any>(null);
 
-  // Update selected section when sections change
   useEffect(() => {
     if (sections.length > 0 && !selectedSection) {
       setSelectedSection(sections[0].id);
@@ -91,25 +78,23 @@ const EnhancedTimetableView: React.FC = () => {
   const handleGenerateTimetable = async () => {
     setIsGenerating(true);
     try {
-      // Initialize teacher availability
       const newTeacherTimeSlots: Record<string, Record<string, Record<number, boolean>>> = {};
       teachers.forEach((teacher) => {
         newTeacherTimeSlots[teacher.id] = {};
         DAYS.forEach((day) => {
           newTeacherTimeSlots[teacher.id][day] = {};
-          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+          for (let period = 1; period <= 7; period++) {
             newTeacherTimeSlots[teacher.id][day][period] = true;
           }
         });
       });
 
-      // Update teacher availability based on timetable
       Object.values(timetable).forEach((sectionTimetable) => {
         Object.entries(sectionTimetable).forEach(([day, periods]) => {
           Object.entries(periods).forEach(([period, slot]) => {
             if (slot && slot.teacherId) {
               const periodNum = parseInt(period);
-              if (newTeacherTimeSlots[slot.teacherId]?.[day]?.[periodNum]) {
+              if (periodNum <= 7 && newTeacherTimeSlots[slot.teacherId]?.[day]?.[periodNum]) {
                 newTeacherTimeSlots[slot.teacherId][day][periodNum] = false;
               }
             }
