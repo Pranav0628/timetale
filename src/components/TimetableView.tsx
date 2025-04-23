@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useData, DAYS, PERIODS_PER_DAY } from "@/contexts/DataContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw } from "lucide-react";
@@ -155,7 +155,7 @@ const TimetableView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.from({ length: PERIODS_PER_DAY }, (_, period) => period + 1).map((period) => (
+                    {Array.from({ length: 7 }, (_, period) => period + 1).map((period) => (
                       <tr key={period} className="border-b last:border-0">
                         <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
                           {period}
