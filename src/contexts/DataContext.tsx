@@ -142,14 +142,102 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       if (ENABLE_MOCKUP) {
         console.log("Using mockup data mode");
         
+        // Initialize mock sections
+        const mockSections: Section[] = [
+          { id: "s1", name: "A" },
+          { id: "s2", name: "B" },
+          { id: "s3", name: "C" }
+        ];
+        
+        // Initialize mock subjects with hours per week
+        const mockSubjects: Subject[] = [
+          { 
+            id: "sub1", 
+            name: "DSA",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 3, "s2": 3, "s3": 3 },
+            type: "lecture"
+          },
+          { 
+            id: "sub2", 
+            name: "DSAL",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 2, "s2": 2, "s3": 2 },
+            type: "lab",
+            location: "DBMS LAB A-420"
+          },
+          { 
+            id: "sub3", 
+            name: "PPL",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 3, "s2": 3, "s3": 3 },
+            type: "lecture"
+          },
+          { 
+            id: "sub4", 
+            name: "PBL",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 2, "s2": 2, "s3": 2 },
+            type: "lab",
+            location: "S/W LAB A-406"
+          },
+          { 
+            id: "sub5", 
+            name: "MP",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 3, "s2": 3, "s3": 3 },
+            type: "lecture"
+          },
+          { 
+            id: "sub6", 
+            name: "MPL",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 2, "s2": 2, "s3": 2 },
+            type: "lab",
+            location: "H/W LAB A-417"
+          },
+          { 
+            id: "sub7", 
+            name: "SE",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 3, "s2": 3, "s3": 3 },
+            type: "lecture"
+          },
+          { 
+            id: "sub8", 
+            name: "M3",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 4, "s2": 4, "s3": 4 },
+            type: "lecture"
+          },
+          { 
+            id: "sub9", 
+            name: "M3 TUT",
+            sections: ["s1", "s2", "s3"],
+            hoursPerWeek: { "s1": 1, "s2": 1, "s3": 1 },
+            type: "lecture"
+          }
+        ];
+        
+        setSections(mockSections);
+        setSubjects(mockSubjects);
         setTeachers([]);
-        setSubjects([]);
-        setSections([]);
-        setTimetable({});
+        
+        const emptyTimetable: Timetable = {};
+        mockSections.forEach((section) => {
+          emptyTimetable[section.id] = {};
+          DAYS.forEach((day) => {
+            emptyTimetable[section.id][day] = {};
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+              emptyTimetable[section.id][day][period] = null;
+            }
+          });
+        });
+        setTimetable(emptyTimetable);
         
         toast({
           title: "Mock data mode",
-          description: "Add teachers, subjects, and sections to generate a timetable",
+          description: "Add teachers to generate a timetable for the predefined sections and subjects",
         });
       } else {
         const teachersResponse = await fetch(`${API_URL}/teachers/read.php`);
