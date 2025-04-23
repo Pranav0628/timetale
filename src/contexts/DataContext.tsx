@@ -116,6 +116,14 @@ interface DataProviderProps {
   children: ReactNode;
 }
 
+const LAB_SCHEDULE = {
+  "Monday": { maxLabs: 1, periods: [1, 2] },    // One lab in first two periods
+  "Tuesday": { maxLabs: 1, periods: [3, 4] },   // One lab in middle periods
+  "Wednesday": { maxLabs: 1, periods: [5, 6] }, // One lab in later periods
+  "Thursday": { maxLabs: 1, periods: [7, 8] },  // One lab in last periods
+  "Friday": { maxLabs: 2, periods: [1, 2, 5, 6] } // Two labs allowed
+};
+
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -736,6 +744,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         }
       }
 
+      const labsPerDay: Record<string, number> = {};
+      DAYS.forEach(day => {
+        labsPerDay[day] = 0;
+      });
+
       for (const subjectPriority of subjectPriorities) {
         let { sectionId, subjectId, hoursNeeded, type, location } = subjectPriority;
         
@@ -776,36 +789,49 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               if (newTimetable[sectionId][day][period] !== null) continue;
               
               if (type === "lab") {
-                const availableTeacher = eligibleTeachers.find((teacher) => 
-                  teacherTimeSlots[teacher.id][day][period] === true && 
-                  teacherTimeSlots[teacher.id][day][period + 1] === true &&
-                  teacherAssignments[teacher.id] + 2 <= teacher.maxHours
-                );
+                const availablePeriods = LAB_SCHEDULE[day as keyof typeof LAB_SCHEDULE].periods;
                 
-                if (availableTeacher) {
-                  newTimetable[sectionId][day][period] = {
-                    teacherId: availableTeacher.id,
-                    subjectId,
-                    type: "lab",
-                    location
-                  };
+                for (let i = 0; i < availablePeriods.length - 1; i++) {
+                  const period = availablePeriods[i];
+                  const nextPeriod = availablePeriods[i + 1];
                   
-                  newTimetable[sectionId][day][period + 1] = {
-                    teacherId: availableTeacher.id,
-                    subjectId,
-                    type: "lab",
-                    location
-                  };
-                  
-                  teacherTimeSlots[availableTeacher.id][day][period] = false;
-                  teacherTimeSlots[availableTeacher.id][day][period + 1] = false;
-                  
-                  teacherAssignments[availableTeacher.id] += 2;
-                  
-                  hoursAllocated += 2;
-                  allocationsPerDay[day] += 2;
-                  allocated = true;
-                  break;
+                  if (period + 1 !== nextPeriod) continue; // Must be consecutive
+
+                  if (newTimetable[sectionId][day][period] !== null || 
+                      newTimetable[sectionId][day][nextPeriod] !== null) {
+                    continue;
+                  }
+
+                  const availableTeacher = eligibleTeachers.find((teacher) => 
+                    teacherTimeSlots[teacher.id][day][period] === true && 
+                    teacherTimeSlots[teacher.id][day][nextPeriod] === true &&
+                    teacherAssignments[teacher.id] + 2 <= teacher.maxHours
+                  );
+
+                  if (availableTeacher) {
+                    // Allocate the lab for both periods
+                    newTimetable[sectionId][day][period] = {
+                      teacherId: availableTeacher.id,
+                      subjectId,
+                      type: "lab",
+                      location
+                    };
+                    
+                    newTimetable[sectionId][day][nextPeriod] = {
+                      teacherId: availableTeacher.id,
+                      subjectId,
+                      type: "lab",
+                      location
+                    };
+
+                    teacherTimeSlots[availableTeacher.id][day][period] = false;
+                    teacherTimeSlots[availableTeacher.id][day][nextPeriod] = false;
+                    teacherAssignments[availableTeacher.id] += 2;
+                    labsPerDay[day]++;
+                    hoursAllocated += 2;
+                    allocated = true;
+                    break;
+                  }
                 }
               } else {
                 const availableTeacher = eligibleTeachers.find((teacher) => 
@@ -909,7 +935,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       
       toast({
         title: "Timetable generated successfully",
-        description: "The timetable has been created",
+        description: "The timetable has been created with optimized lab distribution",
       });
       
       return true;
@@ -1037,3 +1063,5 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     </DataContext.Provider>
   );
 };
+
+export default DataProvider;
