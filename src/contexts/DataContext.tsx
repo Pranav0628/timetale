@@ -80,7 +80,7 @@ const ENABLE_MOCKUP = true;
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-export const PERIODS_PER_DAY = 8; // Ensure we only have 7 lecture periods (plus 1 for display purposes)
+export const PERIODS_PER_DAY = 7; // Changed from 8 to 7 to match the actual lecture periods
 
 export const TIME_SLOTS = [
   { id: 1, startTime: "8:45", endTime: "9:45", type: "regular" as const },
@@ -121,7 +121,7 @@ const LAB_SCHEDULE = {
   "Monday": { maxLabs: 1, periods: [1, 2] },    // One lab in first two periods
   "Tuesday": { maxLabs: 1, periods: [3, 4] },   // One lab in middle periods
   "Wednesday": { maxLabs: 1, periods: [5, 6] }, // One lab in later periods
-  "Thursday": { maxLabs: 1, periods: [7, 8] },  // One lab in last periods
+  "Thursday": { maxLabs: 1, periods: [6, 7] },  // Updated to use periods 6,7 instead of 7,8
   "Friday": { maxLabs: 2, periods: [1, 2, 5, 6] } // Two labs allowed
 };
 
@@ -229,7 +229,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           emptyTimetable[section.id] = {};
           DAYS.forEach((day) => {
             emptyTimetable[section.id][day] = {};
-            for (let period = 1; period <= 7; period++) {
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
               emptyTimetable[section.id][day][period] = null;
             }
           });
@@ -544,7 +544,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         newTimetable[newId] = {};
         DAYS.forEach((day) => {
           newTimetable[newId][day] = {};
-          for (let period = 1; period <= 7; period++) {
+          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
             newTimetable[newId][day][period] = null;
           }
         });
@@ -714,7 +714,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         newTimetable[section.id] = {};
         DAYS.forEach((day) => {
           newTimetable[section.id][day] = {};
-          for (let period = 1; period <= 7; period++) {
+          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
             newTimetable[section.id][day][period] = null;
           }
         });
@@ -732,7 +732,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         teacherTimeSlots[teacher.id] = {};
         DAYS.forEach((day) => {
           teacherTimeSlots[teacher.id][day] = {};
-          for (let period = 1; period <= 7; period++) {
+          for (let period = 1; period <= PERIODS_PER_DAY; period++) {
             teacherTimeSlots[teacher.id][day][period] = true;
           }
         });
@@ -850,8 +850,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
                 const period = availablePeriods[i];
                 const nextPeriod = availablePeriods[i + 1];
                 
-                // Make sure periods are consecutive
-                if (period + 1 !== nextPeriod) continue;
+                // Make sure periods are consecutive and within our PERIODS_PER_DAY limit
+                if (period + 1 !== nextPeriod || period > PERIODS_PER_DAY || nextPeriod > PERIODS_PER_DAY) continue;
 
                 // Skip if periods are already allocated
                 if (newTimetable[sectionId][day][period] !== null || 
@@ -903,7 +903,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               if (allocationsPerDay[day] >= maxPeriodsPerDay) continue;
               
               // Find an available period in this day
-              for (let period = 1; period <= 7; period++) { // Ensure we only use 7 lecture periods
+              for (let period = 1; period <= PERIODS_PER_DAY; period++) {
                 if (newTimetable[sectionId][day][period] !== null) continue;
                 
                 // Find an available teacher
@@ -940,7 +940,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           if (!allocated && type === "lecture") {
             // Try any available slot, even if it exceeds our maxPeriodsPerDay preference
             for (const day of DAYS) {
-              for (let period = 1; period <= 7; period++) { // Ensure we only use 7 lecture periods
+              for (let period = 1; period <= PERIODS_PER_DAY; period++) {
                 if (newTimetable[sectionId][day][period] !== null) continue;
                 
                 const availableTeacher = eligibleTeachers.find((teacher) => 
@@ -949,5 +949,129 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
                 );
                 
                 if (availableTeacher) {
+                  newTimetable[sectionId][day][period] = {
+                    teacherId: availableTeacher.id,
+                    subjectId,
+                    type: "lecture"
+                  };
+                  
+                  teacherTimeSlots[availableTeacher.id][day][period] = false;
+                  teacherAssignments[availableTeacher.id]++;
+                  hoursAllocated++;
+                  allocated = true;
+                  break;
+                }
+              }
+              
+              if (allocated) break;
+            }
+          }
+          
+          // If we've tried everything and still can't allocate, we give up on this subject
+          if (!allocated) {
+            break;
+          }
+        }
+        
+        // If we couldn't allocate all hours, show a warning
+        if (hoursAllocated < hoursNeeded) {
+          console.warn(`Could only allocate ${hoursAllocated}/${hoursNeeded} hours for ${subject.name} in section ${section.name}`);
+        }
+      }
+      
+      // Set the new timetable
+      setTimetable(newTimetable);
+      
+      // Show success message
+      toast({
+        title: "Timetable Generated",
+        description: "The timetable has been generated successfully",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error generating timetable:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to generate timetable",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
 
-...
+  const resetTimetable = async () => {
+    try {
+      if (ENABLE_MOCKUP) {
+        const emptyTimetable: Timetable = {};
+        sections.forEach((section) => {
+          emptyTimetable[section.id] = {};
+          DAYS.forEach((day) => {
+            emptyTimetable[section.id][day] = {};
+            for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+              emptyTimetable[section.id][day][period] = null;
+            }
+          });
+        });
+        
+        setTimetable(emptyTimetable);
+        
+        toast({
+          title: "Timetable Reset (Mock Mode)",
+          description: "Timetable has been reset successfully",
+        });
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/timetable/reset.php`, {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await fetchData();
+        
+        toast({
+          title: "Timetable Reset",
+          description: "Timetable has been reset successfully",
+        });
+      } else {
+        throw new Error(data.message || "Failed to reset timetable");
+      }
+    } catch (error) {
+      console.error("Error resetting timetable:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reset timetable",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <DataContext.Provider
+      value={{
+        teachers,
+        subjects,
+        sections,
+        timetable,
+        loading,
+        addTeacher,
+        updateTeacher,
+        removeTeacher,
+        addSubject,
+        updateSubject,
+        removeSubject,
+        addSection,
+        updateSection,
+        removeSection,
+        generateTimetable,
+        resetTimetable,
+        fetchData,
+      }}
+    >
+      {children}
+    </DataContext.Provider>
+  );
+};

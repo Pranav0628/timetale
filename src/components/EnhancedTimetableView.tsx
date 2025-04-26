@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useData, DAYS, PERIODS_PER_DAY, TIME_SLOTS, PERIOD_MAPPING } from "@/contexts/DataContext";
 import { Card } from "@/components/ui/card";
@@ -30,7 +31,7 @@ const TeacherAvailabilityTable = ({ teacherTimeSlots, teachers, selectedSection 
                 {DAYS.map((day) => (
                   <TableCell key={day} className="p-2">
                     <div className="text-xs">
-                      {Array.from({ length: 7 }, (_, i) => i + 1).map((period) => (
+                      {Array.from({ length: PERIODS_PER_DAY }, (_, i) => i + 1).map((period) => (
                         <span 
                           key={period}
                           className={`inline-block w-6 h-6 m-0.5 rounded-sm text-center leading-6 

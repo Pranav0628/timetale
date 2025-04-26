@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useData, DAYS } from "@/contexts/DataContext";
+import { useData, DAYS, PERIODS_PER_DAY } from "@/contexts/DataContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -156,7 +156,7 @@ const TimetableView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.from({ length: 7 }, (_, period) => period + 1).map((period) => (
+                    {Array.from({ length: PERIODS_PER_DAY }, (_, period) => period + 1).map((period) => (
                       <tr key={period} className="border-b last:border-0">
                         <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
                           {period}
@@ -168,7 +168,8 @@ const TimetableView: React.FC = () => {
                             <td key={day} className="px-4 py-2">
                               {slot ? (
                                 <div className={`p-2 rounded-md ${subjectColors[slot.subjectId]} bg-opacity-15 border-l-4 ${subjectColors[slot.subjectId]}`}>
-                                  <div className="font-medium">{getSubjectName(slot.subjectId)}</div>
+                                  <div className="font-medium">{getSubjectName(slot.subjectId)} {slot.type === 'lab' ? '(LAB)' : ''}</div>
+                                  {slot.location && <div className="text-xs">[{slot.location}]</div>}
                                   <div className="text-xs text-muted-foreground">{getTeacherName(slot.teacherId)}</div>
                                 </div>
                               ) : (
